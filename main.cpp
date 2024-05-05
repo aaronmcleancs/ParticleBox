@@ -17,7 +17,7 @@ int main(int argc, char* argv[]) {
     SDL_Renderer* guiRenderer = SDL_CreateRenderer(guiWindow, -1, SDL_RENDERER_ACCELERATED);
 
     // Load font
-    TTF_Font* font = TTF_OpenFont("/Users/aaronmclean/Library/Fonts/3270-Regular.ttf", 24);
+    TTF_Font* font = TTF_OpenFont("/Users/aaronmclean/Library/Fonts/3270-Regular.ttf", 128);
     if (!font) {
         printf("Failed to load font: %s\n", TTF_GetError());
         SDL_DestroyRenderer(simRenderer);
@@ -38,7 +38,6 @@ int main(int argc, char* argv[]) {
         while (SDL_PollEvent(&event)) {
             if (event.type == SDL_QUIT) running = false;
             gui.handleEvent(event, simulation);  // Let GUI handle its events
-            simulation.handleEvent(event);  // Let simulation handle its events
         }
 
         simulation.update(0.016f); // Update the simulation

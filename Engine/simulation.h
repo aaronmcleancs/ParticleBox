@@ -8,19 +8,25 @@
 class Simulation {
     PhysicsEngine physics;
     std::vector<Particle> particles;
-    bool running;  // State to manage the running state of the simulation
+    bool running;
+    std::chrono::steady_clock::time_point lastFrameTime;
+    int frameCount;
+    float frameRate;
 
 public:
     Simulation();
     void start();
     void stop();
     void update(double deltaTime);
+    void calculateFrameRate();
+    float getFrameRate() const;
     void render(SDL_Renderer* renderer);
-    void handleEvent(const SDL_Event& event);
     void reset();
     Particle createRandomParticle();
     int getParticleCount() const;
-    float getFrameRate() const;
+    void toggleGravity();
+    void addParticle();
+    void removeParticle();
 };
 
 #endif

@@ -4,19 +4,27 @@
 #include <string>
 
 GUI::GUI(SDL_Renderer* renderer, TTF_Font* font) : renderer(renderer), font(font) {
+    SDL_Color textColor = {0, 0, 0, 255};  // Use a single declaration for textColor
+    // Initialize buttons for basic control
     startButton = {10, 50, 180, 40};
     stopButton = {10, 100, 180, 40};
     resetButton = {10, 150, 180, 40};
-    particleCountRect = {10, 10, 180, 30}; // Display position for particle count
-    frameRateRect = {200, 10, 180, 30}; // Display position for frame rate
-
-    SDL_Color textColor = {0, 0, 0, 255};  // Black text for buttons
     initTexture(&startTexture, "Start", textColor);
     initTexture(&stopTexture, "Stop", textColor);
     initTexture(&resetTexture, "Reset", textColor);
+
+    // Initialize buttons for extended control
+    gravityButton = {10, 200, 180, 40};
+    addParticleButton = {10, 250, 180, 40};
+    removeParticleButton = {10, 300, 180, 40};
+    initTexture(&gravityTexture, "Toggle Gravity", textColor);
+    initTexture(&addParticleTexture, "Add Particle", textColor);
+    initTexture(&removeParticleTexture, "Remove Particle", textColor);
+
     particleCountTexture = nullptr;
     frameRateTexture = nullptr;
 }
+
 
 GUI::~GUI() {
     SDL_DestroyTexture(startTexture);
@@ -24,6 +32,9 @@ GUI::~GUI() {
     SDL_DestroyTexture(resetTexture);
     SDL_DestroyTexture(particleCountTexture);
     SDL_DestroyTexture(frameRateTexture);
+    SDL_DestroyTexture(gravityTexture);
+    SDL_DestroyTexture(addParticleTexture);
+    SDL_DestroyTexture(removeParticleTexture);
 }
 
 void GUI::render(Simulation& simulation) {
@@ -47,6 +58,9 @@ void GUI::render(Simulation& simulation) {
     if (frameRateTexture) {
         SDL_RenderCopy(renderer, frameRateTexture, NULL, &frameRateRect);
     }
+    SDL_RenderCopy(renderer, gravityTexture, NULL, &gravityButton);
+    SDL_RenderCopy(renderer, addParticleTexture, NULL, &addParticleButton);
+    SDL_RenderCopy(renderer, removeParticleTexture, NULL, &removeParticleButton);
 }
 
 void GUI::updateMetricsDisplay(const Simulation& simulation) {
@@ -91,6 +105,23 @@ void GUI::handleEvent(SDL_Event& event, Simulation& simulation) {
             y >= resetButton.y && y <= resetButton.y + resetButton.h) {
             simulation.reset();
         }
+        if (x >= gravityButton.x && x <= gravityButton.x + gravityButton.w &&
+            y >= gravityButton.y && y <= gravityButton.y + gravityButton.h) {
+            simulation.toggleGravity();
+        }
+
+        // Add particle
+        if (x >= addParticleButton.x && x <= addParticleButton.x + addParticleButton.w &&
+            y >= addParticleButton.y && y <= addParticleButton.y + addParticleButton.h) {
+            if (simulation.getParticleCount() < 1000) {
+                simulation.addParticle();
+            }
+        }
+
+        // Remove particle
+        if (x >= removeParticleButton.x && x <= removeParticleButton.x + removeParticleButton.w &&
+            y >= removeParticleButton.y && y <= removeParticleButton.y + removeParticleButton.h) {
+            simulation.removeParticle();
+        }
     }
 }
-

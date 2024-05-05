@@ -4,8 +4,9 @@
 #include <cmath>    // For cos, sin, M_PI
 #include <ctime>    // For time()
 
-Simulation::Simulation() : running(false) {
+Simulation::Simulation() : running(false), frameCount(0), frameRate(0.0f) {
     srand(time(nullptr));
+    lastFrameTime = std::chrono::steady_clock::now();
 }
 
 void Simulation::start() {
@@ -24,12 +25,14 @@ void Simulation::reset() {
 }
 
 void Simulation::update(double deltaTime) {
-    if (!running) return;  // Do not update if simulation is not running
+    if (!running) return; // Do not update if simulation is not running
 
     std::vector<Vec2> forces = physics.computeForces(particles);
     for (size_t i = 0; i < particles.size(); i++) {
         particles[i].update(forces[i], deltaTime);
     }
+
+    calculateFrameRate(); // Calculate FPS at the end of the update
 }
 
 void Simulation::render(SDL_Renderer* renderer) {
@@ -42,7 +45,6 @@ Particle Simulation::createRandomParticle() {
     const int windowWidth = 1200; // Window width remains the same
     const int windowHeight = 800; // Window height remains the same
 
-    // Generate position without excluding any part for control width
     float x = float(rand() % windowWidth);
     float y = float(rand() % windowHeight);
     Vec2 pos(x, y);
@@ -60,31 +62,40 @@ Particle Simulation::createRandomParticle() {
     return Particle(pos, vel, color, radius, mass, 0.0, 0.0, 0);
 }
 
-void Simulation::handleEvent(const SDL_Event& event) {
-    // Example: Respond to keyboard events to toggle simulation parameters
-    if (event.type == SDL_KEYDOWN) {
-        switch (event.key.keysym.sym) {
-            case SDLK_g:
-                // Toggle gravity effect
-                physics.toggleGravity();
-                break;
-            case SDLK_p:
-                // Add or remove particles
-                if (particles.size() < 1000) {
-                    particles.push_back(createRandomParticle());
-                } else {
-                    particles.pop_back();
-                }
-                break;
-        }
+void Simulation::toggleGravity() {
+    physics.toggleGravity();
+}
+
+void Simulation::addParticle() {
+    if (particles.size() < 1000) {  // Ensure there's an upper limit for particles
+        particles.push_back(createRandomParticle());
     }
+}
+
+void Simulation::removeParticle() {
+    if (!particles.empty()) {
+        particles.pop_back();
+    }
+}
+
+
+void Simulation::calculateFrameRate() {
+    auto currentTime = std::chrono::steady_clock::now();
+    double secondsPassed = std::chrono::duration_cast<std::chrono::duration<double>>(currentTime - lastFrameTime).count();
+
+    if (secondsPassed >= 1.0) {
+        frameRate = frameCount / secondsPassed;
+        frameCount = 0;
+        lastFrameTime = currentTime;
+    } else {
+        frameCount++;
+    }
+}
+
+float Simulation::getFrameRate() const {
+    return frameRate;
 }
 
 int Simulation::getParticleCount() const {
     return particles.size();
-}
-
-float Simulation::getFrameRate() const {
-    // For now, return a fixed frame rate; replace with dynamic calculation if needed
-    return 60.0f;  // Assuming 60 FPS for demonstration purposes
 }

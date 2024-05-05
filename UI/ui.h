@@ -3,8 +3,7 @@
 
 #include <SDL.h>
 #include <SDL_ttf.h>
-
-class Simulation;
+#include "simulation.h"
 
 class GUI {
 public:
@@ -13,7 +12,7 @@ public:
     void render(Simulation& simulation);
     void handleEvent(SDL_Event& event, Simulation& simulation);
     void updateMetricsDisplay(const Simulation& simulation);
-    void initTexture(SDL_Texture** texture, const char* text, SDL_Color color);  // Declare this method
+    void initTexture(SDL_Texture** texture, const char* text, SDL_Color color);
 
 private:
     SDL_Renderer* renderer;
@@ -23,11 +22,17 @@ private:
     SDL_Texture* resetTexture;
     SDL_Texture* particleCountTexture;
     SDL_Texture* frameRateTexture;
+    SDL_Texture* gravityTexture;  // Added
+    SDL_Texture* addParticleTexture;  // Added
+    SDL_Texture* removeParticleTexture;  // Added
     SDL_Rect startButton;
     SDL_Rect stopButton;
     SDL_Rect resetButton;
     SDL_Rect particleCountRect;
     SDL_Rect frameRateRect;
+    SDL_Rect gravityButton;  // Added
+    SDL_Rect addParticleButton;  // Added
+    SDL_Rect removeParticleButton;  // Added
 };
 
 #endif

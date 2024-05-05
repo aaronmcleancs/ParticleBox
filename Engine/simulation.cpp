@@ -4,22 +4,31 @@
 #include <cmath>    // For cos, sin, M_PI
 #include <ctime>    // For time()
 
-Simulation::Simulation() {
-    srand(time(nullptr));  // Seed the random number generator
+Simulation::Simulation() : running(false) {
+    srand(time(nullptr));
+}
+
+void Simulation::start() {
+    running = true;
+}
+
+void Simulation::stop() {
+    running = false;
 }
 
 void Simulation::reset() {
-    particles.clear();  // Clear all existing particles
+    particles.clear();
     for (int i = 0; i < 100; ++i) {
         particles.push_back(createRandomParticle());
     }
 }
 
-
 void Simulation::update(double deltaTime) {
+    if (!running) return;  // Do not update if simulation is not running
+
     std::vector<Vec2> forces = physics.computeForces(particles);
     for (size_t i = 0; i < particles.size(); i++) {
-        particles[i]. update(forces[i], deltaTime);
+        particles[i].update(forces[i], deltaTime);
     }
 }
 

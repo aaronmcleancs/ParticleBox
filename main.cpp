@@ -1,62 +1,68 @@
 #include <SDL.h>
 #include <SDL_ttf.h>
 #include "simulation.h"
+#include "ui.h"
 
 int main(int argc, char* argv[]) {
+    // Initialize SDL and SDL_ttf
     SDL_Init(SDL_INIT_VIDEO);
-    SDL_Window* window = SDL_CreateWindow("Particle Simulator", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, 1400, 600, 0);
-    SDL_Renderer* renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED);
+    TTF_Init();
+
+    // Create the main simulation window
+    SDL_Window* simWindow = SDL_CreateWindow("Particle Simulator", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, 1200, 600, 0);
+    SDL_Renderer* simRenderer = SDL_CreateRenderer(simWindow, -1, SDL_RENDERER_ACCELERATED);
+
+    // Create a separate window for GUI
+    SDL_Window* guiWindow = SDL_CreateWindow("Controls", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, 200, 600, 0);
+    SDL_Renderer* guiRenderer = SDL_CreateRenderer(guiWindow, -1, SDL_RENDERER_ACCELERATED);
+
+    // Load font
+    TTF_Font* font = TTF_OpenFont("/Users/aaronmclean/Library/Fonts/3270-Regular.ttf", 24);
+    if (!font) {
+        printf("Failed to load font: %s\n", TTF_GetError());
+        SDL_DestroyRenderer(simRenderer);
+        SDL_DestroyWindow(simWindow);
+        SDL_DestroyRenderer(guiRenderer);
+        SDL_DestroyWindow(guiWindow);
+        TTF_Quit();
+        SDL_Quit();
+        return -1;
+    }
 
     Simulation simulation;
-
-    // Define GUI elements
-    SDL_Rect startButton = {1205, 50, 180, 40}; // Position and size of start button
-    SDL_Rect stopButton = {1205, 100, 180, 40}; // Position and size of stop button
-    SDL_Rect resetButton = {1205, 150, 180, 40}; // Position and size of reset button
+    GUI gui(guiRenderer, font);  // Pass the GUI renderer and font
 
     bool running = true;
-    bool simulationRunning = false;
     SDL_Event event;
     while (running) {
         while (SDL_PollEvent(&event)) {
             if (event.type == SDL_QUIT) running = false;
-            else if (event.type == SDL_MOUSEBUTTONDOWN) {
-                int x, y;
-                SDL_GetMouseState(&x, &y);
-                // Check if buttons are pressed
-                if (x >= startButton.x && x <= startButton.x + startButton.w &&
-                    y >= startButton.y && y <= startButton.y + startButton.h) {
-                    simulationRunning = true;
-                } else if (x >= stopButton.x && x <= stopButton.x + stopButton.w &&
-                           y >= stopButton.y && y <= stopButton.y + stopButton.h) {
-                    simulationRunning = false;
-                } else if (x >= resetButton.x && x <= resetButton.x + resetButton.w &&
-                           y >= resetButton.y && y <= resetButton.y + resetButton.h) {
-                    simulation.reset();
-                }
-            }
-            simulation.handleEvent(event);
+            gui.handleEvent(event, simulation);  // Let GUI handle its events
+            simulation.handleEvent(event);  // Let simulation handle its events
         }
 
-        if (simulationRunning) {
-            simulation.update(0.016f); // Update the simulation
-        }
+        simulation.update(0.016f); // Update the simulation
 
-        SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
-        SDL_RenderClear(renderer);
-        simulation.render(renderer); // Render the simulation
+        // Clear and render the simulation window
+        SDL_SetRenderDrawColor(simRenderer, 0, 0, 0, 255);
+        SDL_RenderClear(simRenderer);
+        simulation.render(simRenderer);
+        SDL_RenderPresent(simRenderer);
 
-        // Render GUI
-        SDL_SetRenderDrawColor(renderer, 255, 0, 0, 255); // Red color for buttons
-        SDL_RenderFillRect(renderer, &startButton);
-        SDL_RenderFillRect(renderer, &stopButton);
-        SDL_RenderFillRect(renderer, &resetButton);
-
-        SDL_RenderPresent(renderer);
+        // Clear and render the GUI window
+        SDL_SetRenderDrawColor(guiRenderer, 255, 255, 255, 255);
+        SDL_RenderClear(guiRenderer);
+        gui.render();  // Let GUI render its components
+        SDL_RenderPresent(guiRenderer);
     }
 
-    SDL_DestroyRenderer(renderer);
-    SDL_DestroyWindow(window);
+    // Cleanup
+    SDL_DestroyRenderer(simRenderer);
+    SDL_DestroyWindow(simWindow);
+    SDL_DestroyRenderer(guiRenderer);
+    SDL_DestroyWindow(guiWindow);
+    TTF_CloseFont(font);
+    TTF_Quit();
     SDL_Quit();
     return 0;
 }

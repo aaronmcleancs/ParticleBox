@@ -7,15 +7,12 @@
 struct Vec2 {
     float x, y;
 
-    // Default constructor with optional parameters
     Vec2(float x = 0, float y = 0) : x(x), y(y) {}
 
-    // Vector addition
     Vec2 operator+(const Vec2& other) const {
         return {x + other.x, y + other.y};
     }
 
-    // Vector subtraction
     Vec2 operator-(const Vec2& other) const {
         return {x - other.x, y - other.y};
     }
@@ -66,15 +63,16 @@ public:
     Vec2 position, velocity;
     SDL_Color color;
     float radius, mass, dipoleMoment, exclusionConstant;
-    int type; // For categorizing particle types
+    int type;
 
-    // Ensure this constructor is exactly as follows:
     Particle(Vec2 pos, Vec2 vel, SDL_Color col, float r, float m, float dipole, float exclusion, int t)
         : position(pos), velocity(vel), color(col), radius(r), mass(m), dipoleMoment(dipole), exclusionConstant(exclusion), type(t) {}
     
     void update(const Vec2& force, float deltaTime);
     void render(SDL_Renderer* renderer);
+private:
+    static void drawCircle(SDL_Renderer* renderer, int centerX, int centerY, int radius);
 };
 
 
-#endif // PARTICLE_H
+#endif

@@ -52,8 +52,8 @@ Particle Simulation::createRandomParticle() {
     Vec2 vel(cos(angle) * speed, sin(angle) * speed);
 
     SDL_Color color = {Uint8(rand() % 256), Uint8(rand() % 256), Uint8(rand() % 256), 255};
-    float radius = 5.0f + float(rand() % 10); // Random radius between 5 and 15
-    float mass = radius / 5.0f;  // Mass proportional to radius
+    float radius = 5.0f;
+    float mass = radius / 5.0f;
 
     return Particle(pos, vel, color, radius, mass, 0.0, 0.0, 0);
 }

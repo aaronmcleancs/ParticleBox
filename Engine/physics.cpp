@@ -66,29 +66,31 @@ Vec2 PhysicsEngine::computeExclusionForce(const Particle& a, const Particle& b) 
 void PhysicsEngine::applyBoundaries(Particle& particle) {
     // Define the window dimensions
     const int windowWidth = 1200;  // Total width of the window
-    const int windowHeight = 600;  // Total height of the window
+    const int windowHeight = 800;  // Total height of the window
+    const float dampingFactor = 0.9; // Damping factor to simulate energy loss on collision
 
     // Check and reflect at the right boundary of the window
     if (particle.position.x > windowWidth) {
-        particle.velocity.x *= -1;  // Reverse direction if particle hits the right edge
+        particle.velocity.x *= -dampingFactor; // Apply damping factor and reverse direction
         particle.position.x = windowWidth; // Reposition to avoid sticking to the edge
     }
 
     // Check and reflect at the left boundary of the window
     if (particle.position.x < 0) {
-        particle.velocity.x *= -1;  // Reverse direction if particle hits the left edge
+        particle.velocity.x *= -dampingFactor; // Apply damping factor and reverse direction
         particle.position.x = 0; // Reposition to avoid sticking to the edge
     }
 
     // Check and reflect at the top boundary of the window
     if (particle.position.y < 0) {
-        particle.velocity.y *= -1;  // Reverse direction if particle hits the top edge
+        particle.velocity.y *= -dampingFactor; // Apply damping factor and reverse direction
         particle.position.y = 0; // Reposition to avoid sticking to the edge
     }
 
     // Check and reflect at the bottom boundary of the window
     if (particle.position.y > windowHeight) {
-        particle.velocity.y *= -1;  // Reverse direction if particle hits the bottom edge
+        particle.velocity.y *= -dampingFactor; // Apply damping factor and reverse direction
         particle.position.y = windowHeight; // Reposition to avoid sticking to the edge
     }
 }
+

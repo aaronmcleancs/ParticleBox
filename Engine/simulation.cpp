@@ -39,25 +39,26 @@ void Simulation::render(SDL_Renderer* renderer) {
 }
 
 Particle Simulation::createRandomParticle() {
-    const int windowWidth = 1200;
-    const int windowHeight = 600;
-    const int controlWidth = 200;
+    const int windowWidth = 1200; // Window width remains the same
+    const int windowHeight = 800; // Window height remains the same
 
-    float x = float(rand() % (windowWidth - controlWidth) + controlWidth);
+    // Generate position without excluding any part for control width
+    float x = float(rand() % windowWidth);
     float y = float(rand() % windowHeight);
     Vec2 pos(x, y);
 
+    // Angle and speed calculations remain unchanged
     float angle = float(rand() % 360) * M_PI / 180.0f;
     float speed = float(rand() % 50) / 10.0f;
     Vec2 vel(cos(angle) * speed, sin(angle) * speed);
 
+    // Color generation remains unchanged
     SDL_Color color = {Uint8(rand() % 256), Uint8(rand() % 256), Uint8(rand() % 256), 255};
     float radius = 5.0f;
     float mass = radius / 5.0f;
 
     return Particle(pos, vel, color, radius, mass, 0.0, 0.0, 0);
 }
-
 
 void Simulation::handleEvent(const SDL_Event& event) {
     // Example: Respond to keyboard events to toggle simulation parameters

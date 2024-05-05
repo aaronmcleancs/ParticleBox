@@ -12,6 +12,7 @@ public:
     ~GUI();
     void render();
     void handleEvent(SDL_Event& event, Simulation& simulation);
+    void updateButtonAppearance(SDL_Rect& button, bool isHovered);
 
 private:
     SDL_Renderer* renderer;

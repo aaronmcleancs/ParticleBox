@@ -6,10 +6,15 @@
 
 Simulation::Simulation() {
     srand(time(nullptr));  // Seed the random number generator
-    const int controlWidth = 200;
-    const int windowWidth = 1200;
-    const int windowHeight = 600;
 }
+
+void Simulation::reset() {
+    particles.clear();  // Clear all existing particles
+    for (int i = 0; i < 100; ++i) {
+        particles.push_back(createRandomParticle());
+    }
+}
+
 
 void Simulation::update(double deltaTime) {
     std::vector<Vec2> forces = physics.computeForces(particles);

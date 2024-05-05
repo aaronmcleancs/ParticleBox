@@ -52,7 +52,7 @@ int main(int argc, char* argv[]) {
         // Clear and render the GUI window
         SDL_SetRenderDrawColor(guiRenderer, 255, 255, 255, 255);
         SDL_RenderClear(guiRenderer);
-        gui.render();  // Let GUI render its components
+        gui.render(simulation);
         SDL_RenderPresent(guiRenderer);
     }
 

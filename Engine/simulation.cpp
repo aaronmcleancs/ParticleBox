@@ -79,3 +79,12 @@ void Simulation::handleEvent(const SDL_Event& event) {
         }
     }
 }
+
+int Simulation::getParticleCount() const {
+    return particles.size();
+}
+
+float Simulation::getFrameRate() const {
+    // For now, return a fixed frame rate; replace with dynamic calculation if needed
+    return 60.0f;  // Assuming 60 FPS for demonstration purposes
+}

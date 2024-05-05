@@ -19,6 +19,8 @@ public:
     void handleEvent(const SDL_Event& event);
     void reset();
     Particle createRandomParticle();
+    int getParticleCount() const;
+    float getFrameRate() const;
 };
 
 #endif

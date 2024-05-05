@@ -10,9 +10,10 @@ class GUI {
 public:
     GUI(SDL_Renderer* renderer, TTF_Font* font);
     ~GUI();
-    void render();
+    void render(Simulation& simulation);
     void handleEvent(SDL_Event& event, Simulation& simulation);
-    void updateButtonAppearance(SDL_Rect& button, bool isHovered);
+    void updateMetricsDisplay(const Simulation& simulation);
+    void initTexture(SDL_Texture** texture, const char* text, SDL_Color color);  // Declare this method
 
 private:
     SDL_Renderer* renderer;
@@ -20,9 +21,13 @@ private:
     SDL_Texture* startTexture;
     SDL_Texture* stopTexture;
     SDL_Texture* resetTexture;
+    SDL_Texture* particleCountTexture;
+    SDL_Texture* frameRateTexture;
     SDL_Rect startButton;
     SDL_Rect stopButton;
     SDL_Rect resetButton;
+    SDL_Rect particleCountRect;
+    SDL_Rect frameRateRect;
 };
 
 #endif

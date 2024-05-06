@@ -4,7 +4,7 @@
 #include <string>
 
 GUI::GUI(SDL_Renderer* renderer, TTF_Font* font) : renderer(renderer), font(font) {
-    SDL_Color textColor = {0, 0, 0, 255};  // Use a single declaration for textColor
+    SDL_Color textColor = {255, 255, 255, 255};  // White text for buttons
     // Initialize buttons for basic control
     startButton = {10, 50, 180, 40};
     stopButton = {10, 100, 180, 40};
@@ -41,7 +41,7 @@ void GUI::render(Simulation& simulation) {
     updateMetricsDisplay(simulation); // Update the display metrics
 
     // Render buttons
-    SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255); // White color for buttons
+    SDL_SetRenderDrawColor(renderer, 15, 15, 15, 255); // White color for buttons
     SDL_RenderFillRect(renderer, &startButton);
     SDL_RenderFillRect(renderer, &stopButton);
     SDL_RenderFillRect(renderer, &resetButton);

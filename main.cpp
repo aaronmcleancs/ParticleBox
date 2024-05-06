@@ -40,7 +40,7 @@ int main(int argc, char* argv[]) {
             gui.handleEvent(event, simulation);  // Let GUI handle its events
         }
 
-        simulation.update(0.016f); // Update the simulation
+        simulation.update(0.016f);
 
         // Clear and render the simulation window
         SDL_SetRenderDrawColor(simRenderer, 0, 0, 0, 255);

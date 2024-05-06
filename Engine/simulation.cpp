@@ -11,6 +11,7 @@
 Simulation::Simulation() : running(false), frameCount(0), frameRate(0.0f) {
     srand(time(nullptr));
     lastFrameTime = std::chrono::steady_clock::now();
+    simulation_speed = 0.0016;
 }
 
 void Simulation::start() {
@@ -31,7 +32,7 @@ void Simulation::reset() {
 void Simulation::update(double deltaTime) {
     if (!running) return;
 
-    int numThreads = 24; // Manually set the number of threads to 24
+    int numThreads = 24;
     std::vector<std::future<void>> futures;
 
     auto updateChunk = [this, deltaTime](int start, int end) {

@@ -27,6 +27,7 @@ public:
     void toggleGravity();
     void addParticle();
     void removeParticle();
+    float simulation_speed;
 };
 
 #endif

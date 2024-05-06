@@ -3,6 +3,7 @@
 #include <SDL_ttf.h>
 #include <string>
 
+
 GUI::GUI(SDL_Renderer* renderer, TTF_Font* font) : renderer(renderer), font(font) {
     startButton = {10, 50, 180, 40};
     stopButton = {10, 100, 180, 40};
@@ -40,7 +41,7 @@ void GUI::render(Simulation& simulation) {
     updateMetricsDisplay(simulation); // Update the display metrics
 
     // Render buttons
-    SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255); // White color for buttons
+    SDL_SetRenderDrawColor(renderer, 230, 230, 230, 255); // White color for buttons
     SDL_RenderFillRect(renderer, &startButton);
     SDL_RenderFillRect(renderer, &stopButton);
     SDL_RenderFillRect(renderer, &resetButton);

@@ -81,10 +81,10 @@ Particle Simulation::createRandomParticle() {
 
     // Color generation remains unchanged
     SDL_Color color = {Uint8(rand() % 256), Uint8(rand() % 256), Uint8(rand() % 256), 255};
-    float radius = 5.0f;
+    float radius = 3.0f;
     float mass = radius / 5.0f;
 
-    return Particle(pos, vel, color, radius, mass, 0.0, 0.0, 0);
+    return Particle(pos, vel, color, radius, mass, 0.0, 0.0, 1.0, 0);
 }
 
 void Simulation::toggleGravity() {

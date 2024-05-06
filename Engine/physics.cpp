@@ -2,24 +2,51 @@
 #include <cmath>
 
 std::vector<Vec2> PhysicsEngine::computeForces(std::vector<Particle>& particles, int start, int end) {
-    std::vector<Vec2> forces(end - start, Vec2(0, 0)); // Initialize forces for the subset
+    std::vector<Vec2> forces(end - start, Vec2(0, 0));
 
     for (int i = start; i < end; ++i) {
-        Vec2 netForce(0, 0); // Start with no force
+        Vec2 netForce(0, 0);
         for (int j = 0; j < particles.size(); ++j) {
             if (i != j) {
-                Vec2 force = computeInteraction(particles[i], particles[j]);
-                netForce += force; // Sum up all interaction forces
+                Vec2 interactionForce = computeInteraction(particles[i], particles[j]);
+                Vec2 repulsionForce = computeRepulsion(particles[i], particles[j]);
+                netForce += interactionForce;
+                netForce += repulsionForce;  // Add repulsion force to net force
             }
         }
         // Apply gravity if enabled
         if (gravityEnabled) {
-            netForce.y += particles[i].mass * gravity; // Force due to gravity, assuming gravity acts downward
+            netForce.y += particles[i].mass * gravity;
         }
-        forces[i - start] = netForce; // Assign computed net force to this particle
+        forces[i - start] = netForce;
     }
     return forces;
 }
+
+Vec2 PhysicsEngine::computeRepulsion(const Particle& a, const Particle& b) {
+    Vec2 delta = a.position - b.position;
+    float dist = delta.magnitude();
+    if (dist < 1e-6) return Vec2(0, 0); // Avoid division by zero
+
+    // Constants
+    float repulsionCoefficient = 50; // Repulsion strength
+    float attractionCoefficient = 50;  // Attraction strength
+    float attractionRange = 50;        // Distance within which attraction occurs
+    float repulsionRange = 10;         // Distance below which repulsion dominates
+
+    // Calculate repulsion (strong, short-range)
+    float repulsionForce = (dist < repulsionRange) ? (repulsionCoefficient / (dist * dist * dist)) : 0;
+
+    // Calculate attraction (mild, medium-range)
+    float attractionForce = (dist > repulsionRange && dist < attractionRange) ? (-attractionCoefficient / (dist * dist)) : 0;
+
+    // Combine forces
+    float netForceMagnitude = repulsionForce + attractionForce;
+
+    // Normalize delta to get direction and multiply by force magnitude
+    return delta.norm() * netForceMagnitude;
+}
+
 
 Vec2 PhysicsEngine::computeInteraction(const Particle& a, const Particle& b) {
     Vec2 delta = a.position - b.position;

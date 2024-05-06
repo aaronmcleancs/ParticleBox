@@ -62,17 +62,17 @@ class Particle {
 public:
     Vec2 position, velocity;
     SDL_Color color;
-    float radius, mass, dipoleMoment, exclusionConstant;
+    float radius, mass, dipoleMoment, exclusionConstant, repulsionFactor;
     int type;
 
-    Particle(Vec2 pos, Vec2 vel, SDL_Color col, float r, float m, float dipole, float exclusion, int t)
-        : position(pos), velocity(vel), color(col), radius(r), mass(m), dipoleMoment(dipole), exclusionConstant(exclusion), type(t) {}
-    
+    // Updated constructor
+    Particle(Vec2 pos, Vec2 vel, SDL_Color col, float r, float m, float dipole, float exclusion, float repulsion, int t)
+        : position(pos), velocity(vel), color(col), radius(r), mass(m), dipoleMoment(dipole), exclusionConstant(exclusion), repulsionFactor(repulsion), type(t) {}
+
     void update(const Vec2& force, float deltaTime);
     void render(SDL_Renderer* renderer);
 private:
     static void drawCircle(SDL_Renderer* renderer, int centerX, int centerY, int radius);
 };
-
 
 #endif

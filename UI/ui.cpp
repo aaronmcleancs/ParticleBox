@@ -4,27 +4,26 @@
 #include <string>
 
 GUI::GUI(SDL_Renderer* renderer, TTF_Font* font) : renderer(renderer), font(font) {
-    SDL_Color textColor = {255, 255, 255, 255};  // White text for buttons
-    // Initialize buttons for basic control
     startButton = {10, 50, 180, 40};
     stopButton = {10, 100, 180, 40};
     resetButton = {10, 150, 180, 40};
+    particleCountRect = {10, 10, 180, 30}; // Display position for particle count
+    frameRateRect = {200, 10, 180, 30}; // Display position for frame rate
+
+    SDL_Color textColor = {0, 0, 0, 255};  // Black text for buttons
     initTexture(&startTexture, "Start", textColor);
     initTexture(&stopTexture, "Stop", textColor);
     initTexture(&resetTexture, "Reset", textColor);
-
-    // Initialize buttons for extended control
-    gravityButton = {10, 200, 180, 40};
+    particleCountTexture = nullptr;
+    frameRateTexture = nullptr;
+     gravityButton = {10, 200, 180, 40};
     addParticleButton = {10, 250, 180, 40};
     removeParticleButton = {10, 300, 180, 40};
+
     initTexture(&gravityTexture, "Toggle Gravity", textColor);
     initTexture(&addParticleTexture, "Add Particle", textColor);
     initTexture(&removeParticleTexture, "Remove Particle", textColor);
-
-    particleCountTexture = nullptr;
-    frameRateTexture = nullptr;
 }
-
 
 GUI::~GUI() {
     SDL_DestroyTexture(startTexture);
@@ -41,7 +40,7 @@ void GUI::render(Simulation& simulation) {
     updateMetricsDisplay(simulation); // Update the display metrics
 
     // Render buttons
-    SDL_SetRenderDrawColor(renderer, 15, 15, 15, 255); // White color for buttons
+    SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255); // White color for buttons
     SDL_RenderFillRect(renderer, &startButton);
     SDL_RenderFillRect(renderer, &stopButton);
     SDL_RenderFillRect(renderer, &resetButton);
@@ -105,6 +104,7 @@ void GUI::handleEvent(SDL_Event& event, Simulation& simulation) {
             y >= resetButton.y && y <= resetButton.y + resetButton.h) {
             simulation.reset();
         }
+// Gravity toggle
         if (x >= gravityButton.x && x <= gravityButton.x + gravityButton.w &&
             y >= gravityButton.y && y <= gravityButton.y + gravityButton.h) {
             simulation.toggleGravity();

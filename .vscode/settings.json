@@ -41,6 +41,13 @@
         "typeinfo": "cpp",
         "variant": "cpp",
         "vector": "cpp",
-        "algorithm": "cpp"
+        "algorithm": "cpp",
+        "__hash_table": "cpp",
+        "__node_handle": "cpp",
+        "charconv": "cpp",
+        "future": "cpp",
+        "iostream": "cpp",
+        "optional": "cpp",
+        "unordered_map": "cpp"
     }
 }

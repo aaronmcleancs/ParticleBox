@@ -3,6 +3,10 @@
 #include <cstdlib>  // For rand()
 #include <cmath>    // For cos, sin, M_PI
 #include <ctime>    // For time()
+#include <vector>
+#include <thread>
+#include <future>
+#include <numeric>
 
 Simulation::Simulation() : running(false), frameCount(0), frameRate(0.0f) {
     srand(time(nullptr));
@@ -25,15 +29,35 @@ void Simulation::reset() {
 }
 
 void Simulation::update(double deltaTime) {
-    if (!running) return; // Do not update if simulation is not running
+    if (!running) return;
 
-    std::vector<Vec2> forces = physics.computeForces(particles);
-    for (size_t i = 0; i < particles.size(); i++) {
-        particles[i].update(forces[i], deltaTime);
+    int numThreads = 24; // Manually set the number of threads to 24
+    std::vector<std::future<void>> futures;
+
+    auto updateChunk = [this, deltaTime](int start, int end) {
+        std::vector<Vec2> forces = physics.computeForces(particles, start, end);
+        for (int i = start; i < end; ++i) {
+            particles[i].update(forces[i-start], deltaTime);
+            physics.applyBoundaries(particles[i]);
+        }
+    };
+
+    // Calculate the appropriate chunk size
+    int chunkSize = particles.size() / numThreads;
+    for (int i = 0; i < numThreads; ++i) {
+        int start = i * chunkSize;
+        int end = (i == numThreads - 1) ? particles.size() : (start + chunkSize);
+        futures.push_back(std::async(std::launch::async, updateChunk, start, end));
     }
 
-    calculateFrameRate(); // Calculate FPS at the end of the update
+    // Wait for all threads to finish
+    for (auto &future : futures) {
+        future.get();
+    }
+
+    calculateFrameRate();
 }
+
 
 void Simulation::render(SDL_Renderer* renderer) {
     for (size_t i = 0; i < particles.size(); i++) {
@@ -77,7 +101,6 @@ void Simulation::removeParticle() {
         particles.pop_back();
     }
 }
-
 
 void Simulation::calculateFrameRate() {
     auto currentTime = std::chrono::steady_clock::now();

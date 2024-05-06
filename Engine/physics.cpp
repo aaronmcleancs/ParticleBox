@@ -1,14 +1,22 @@
 #include "physics.h"
 #include <cmath>
 
-std::vector<Vec2> PhysicsEngine::computeForces(std::vector<Particle>& particles) {
-    std::vector<Vec2> forces(particles.size(), Vec2(0, gravityEnabled ? gravity : 0));  // Conditional gravity application
+std::vector<Vec2> PhysicsEngine::computeForces(std::vector<Particle>& particles, int start, int end) {
+    std::vector<Vec2> forces(end - start, Vec2(0, 0)); // Initialize forces for the subset
 
-    for (size_t i = 0; i < particles.size(); ++i) {
-        for (size_t j = i + 1; j < particles.size(); ++j) {
-            Vec2 force = computeInteraction(particles[i], particles[j]);
+    for (int i = start; i < end; ++i) {
+        Vec2 netForce(0, 0); // Start with no force
+        for (int j = 0; j < particles.size(); ++j) {
+            if (i != j) {
+                Vec2 force = computeInteraction(particles[i], particles[j]);
+                netForce += force; // Sum up all interaction forces
+            }
         }
-        applyBoundaries(particles[i]);
+        // Apply gravity if enabled
+        if (gravityEnabled) {
+            netForce.y += particles[i].mass * gravity; // Force due to gravity, assuming gravity acts downward
+        }
+        forces[i - start] = netForce; // Assign computed net force to this particle
     }
     return forces;
 }
@@ -62,35 +70,36 @@ Vec2 PhysicsEngine::computeExclusionForce(const Particle& a, const Particle& b) 
     return Vec2(); // No force if particles are not close enough
 }
 
-
 void PhysicsEngine::applyBoundaries(Particle& particle) {
-    // Define the window dimensions
-    const int windowWidth = 1200;  // Total width of the window
-    const int windowHeight = 800;  // Total height of the window
-    const float dampingFactor = 0.9; // Damping factor to simulate energy loss on collision
+    const int windowWidth = 1200;
+    const int windowHeight = 800;
 
-    // Check and reflect at the right boundary of the window
+    // Right boundary
     if (particle.position.x > windowWidth) {
-        particle.velocity.x *= -dampingFactor; // Apply damping factor and reverse direction
         particle.position.x = windowWidth; // Reposition to avoid sticking to the edge
+        particle.velocity.x *= -1; // Reverse the velocity
     }
 
-    // Check and reflect at the left boundary of the window
+    // Left boundary
     if (particle.position.x < 0) {
-        particle.velocity.x *= -dampingFactor; // Apply damping factor and reverse direction
         particle.position.x = 0; // Reposition to avoid sticking to the edge
+        particle.velocity.x *= -1; // Reverse the velocity
     }
 
-    // Check and reflect at the top boundary of the window
+    // Top boundary
     if (particle.position.y < 0) {
-        particle.velocity.y *= -dampingFactor; // Apply damping factor and reverse direction
         particle.position.y = 0; // Reposition to avoid sticking to the edge
+        particle.velocity.y *= -1; // Reverse the velocity
     }
 
-    // Check and reflect at the bottom boundary of the window
+    // Bottom boundary
     if (particle.position.y > windowHeight) {
-        particle.velocity.y *= -dampingFactor; // Apply damping factor and reverse direction
         particle.position.y = windowHeight; // Reposition to avoid sticking to the edge
+        if (particle.velocity.y > 0) { // Check if velocity is downward; reverse if so
+            particle.velocity.y *= -1; // Reverse the velocity
+        }
     }
 }
+
+
 

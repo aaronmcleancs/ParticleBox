@@ -2,7 +2,7 @@
 #define PARTICLE_H
 
 #include <SDL.h>
-#include <cmath> // For sqrt, used in Vec2::magnitude
+#include <cmath> 
 
 struct Vec2 {
     float x, y;
@@ -24,35 +24,30 @@ struct Vec2 {
 
     // Scalar division
     Vec2 operator/(float scalar) const {
-        return {x / scalar, y / scalar};  // Note: No division by zero handling
+        return {x / scalar, y / scalar};
     }
 
-    // Compound assignment (vector addition)
     Vec2& operator+=(const Vec2& other) {
         x += other.x;
         y += other.y;
         return *this;
     }
 
-    // Compound assignment (vector subtraction)
     Vec2& operator-=(const Vec2& other) {
         x -= other.x;
         y -= other.y;
         return *this;
     }
 
-    // Calculate magnitude (length) of the vector
     float magnitude() const {
         return sqrt(x * x + y * y);
     }
 
-    // Normalize the vector
     Vec2 norm() const {
         float mag = magnitude();
-        return mag > 0 ? *this * (1 / mag) : Vec2();  // Avoid division by zero
+        return mag > 0 ? *this * (1 / mag) : Vec2(); 
     }
 
-    // Dot product of two vectors
     float dot(const Vec2& other) const {
         return x * other.x + y * other.y;
     }
@@ -65,7 +60,6 @@ public:
     float radius, mass, dipoleMoment, exclusionConstant, repulsionFactor;
     int type;
 
-    // Updated constructor
     Particle(Vec2 pos, Vec2 vel, SDL_Color col, float r, float m, float dipole, float exclusion, float repulsion, int t)
         : position(pos), velocity(vel), color(col), radius(r), mass(m), dipoleMoment(dipole), exclusionConstant(exclusion), repulsionFactor(repulsion), type(t) {}
 

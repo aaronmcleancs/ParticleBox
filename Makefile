@@ -1,6 +1,6 @@
-CXX = g++  # or clang++ if you're using Clang
+CXX = g++
 CXXFLAGS = -I./UI -I./Engine -I/opt/homebrew/include/SDL2 -D_THREAD_SAFE -std=c++17
-LDFLAGS = $(shell sdl2-config --libs) -lSDL2_ttf
+LDFLAGS = -L/opt/homebrew/lib $(shell sdl2-config --libs) -lSDL2_ttf
 
 SRCS = $(wildcard *.cpp ./Engine/*.cpp ./UI/*.cpp)
 OBJS = $(SRCS:.cpp=.o)

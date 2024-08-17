@@ -2,17 +2,16 @@
 #include <algorithm>
 
 void Particle::update(const Vec2& force, float deltaTime) {
-    Vec2 acceleration = force / mass; // Using division by scalar for acceleration
-    velocity += acceleration * deltaTime; // Update velocity with time step
-    position += velocity * deltaTime; // Update position with new velocity
+    Vec2 acceleration = force / mass;
+    velocity += acceleration * deltaTime; 
+    position += velocity * deltaTime;
 }
 
-// Implementation of Particle::render
 void Particle::render(SDL_Renderer* renderer) {
     float speed = sqrt(velocity.x * velocity.x + velocity.y * velocity.y);
     SDL_Color blue = {0, 0, 255, 255};
     SDL_Color orange = {255, 165, 0, 255};
-    float maxSpeed = 50.0;  // Adjust based on expected speed range
+    float maxSpeed = 50.0; 
     float normSpeed = std::min(speed / maxSpeed, 1.0f);
 
     SDL_Color color;
@@ -29,8 +28,8 @@ void Particle::render(SDL_Renderer* renderer) {
 void Particle::drawCircle(SDL_Renderer* renderer, int centerX, int centerY, int radius) {
     for (int w = 0; w < radius * 2; w++) {
         for (int h = 0; h < radius * 2; h++) {
-            int dx = radius - w;  // Horizontal offset
-            int dy = radius - h;  // Vertical offset
+            int dx = radius - w;  
+            int dy = radius - h;  
             if ((dx * dx + dy * dy) <= (radius * radius)) {
                 SDL_RenderDrawPoint(renderer, centerX + dx, centerY + dy);
             }

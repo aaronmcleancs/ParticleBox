@@ -4,15 +4,12 @@
 #include "ui.h"
 
 int main(int argc, char* argv[]) {
-    // Initialize SDL and SDL_ttf
     SDL_Init(SDL_INIT_VIDEO);
     TTF_Init();
 
-    // Create the main simulation window
     SDL_Window* simWindow = SDL_CreateWindow("Particle Simulator", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, 1200, 800, 0);
     SDL_Renderer* simRenderer = SDL_CreateRenderer(simWindow, -1, SDL_RENDERER_ACCELERATED);
 
-    // Create a separate window for GUI
     SDL_Window* guiWindow = SDL_CreateWindow("Controls", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, 400, 600, 0);
     SDL_Renderer* guiRenderer = SDL_CreateRenderer(guiWindow, -1, SDL_RENDERER_ACCELERATED);
 
@@ -30,32 +27,30 @@ int main(int argc, char* argv[]) {
     }
 
     Simulation simulation;
-    GUI gui(guiRenderer, font);  // Pass the GUI renderer and font
+    GUI gui(guiRenderer, font); 
 
     bool running = true;
     SDL_Event event;
     while (running) {
         while (SDL_PollEvent(&event)) {
             if (event.type == SDL_QUIT) running = false;
-            gui.handleEvent(event, simulation);  // Let GUI handle its events
+            gui.handleEvent(event, simulation); 
         }
 
-        simulation.update(0.016f);
+        simulation.update(0.16f);
 
-        // Clear and render the simulation window
         SDL_SetRenderDrawColor(simRenderer, 0, 0, 0, 255);
         SDL_RenderClear(simRenderer);
         simulation.render(simRenderer);
         SDL_RenderPresent(simRenderer);
 
-        // Clear and render the GUI window
         SDL_SetRenderDrawColor(guiRenderer, 255, 255, 255, 255);
         SDL_RenderClear(guiRenderer);
         gui.render(simulation);
         SDL_RenderPresent(guiRenderer);
     }
 
-    // Cleanup
+
     SDL_DestroyRenderer(simRenderer);
     SDL_DestroyWindow(simWindow);
     SDL_DestroyRenderer(guiRenderer);

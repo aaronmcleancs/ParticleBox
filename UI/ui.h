@@ -22,17 +22,16 @@ private:
     SDL_Texture* resetTexture;
     SDL_Texture* particleCountTexture;
     SDL_Texture* frameRateTexture;
-    SDL_Texture* gravityTexture;  // Added
-    SDL_Texture* addParticleTexture;  // Added
-    SDL_Texture* removeParticleTexture;  // Added
-    SDL_Rect startButton;
+    SDL_Texture* gravityTexture; 
+    SDL_Texture* addParticleTexture; 
+    SDL_Texture* removeParticleTexture; 
     SDL_Rect stopButton;
     SDL_Rect resetButton;
     SDL_Rect particleCountRect;
     SDL_Rect frameRateRect;
-    SDL_Rect gravityButton;  // Added
-    SDL_Rect addParticleButton;  // Added
-    SDL_Rect removeParticleButton;  // Added
+    SDL_Rect gravityButton; 
+    SDL_Rect addParticleButton; 
+    SDL_Rect removeParticleButton; 
 };
 
 #endif

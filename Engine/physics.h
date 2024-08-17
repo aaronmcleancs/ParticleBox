@@ -3,14 +3,13 @@
 
 #include "particle.h"
 #include <vector>
-#include <cmath>    // For advanced mathematical computations
+#include <cmath>   
 
 struct PhysicsState {
     std::vector<Particle> particles;
     void updateState(const std::vector<Vec2>& forces, float deltaTime);
 };
 
-// Include gravity in the PhysicsEngine
 class PhysicsEngine {
      bool gravityEnabled = true;
 public:
@@ -23,4 +22,4 @@ public:
 };
 
 
-#endif // PHYSICS_H
+#endif 

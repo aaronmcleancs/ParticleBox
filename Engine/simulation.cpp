@@ -72,8 +72,6 @@ void Simulation::update(double deltaTime) {
     */
 }
 
-
-
 void Simulation::render(SDL_Renderer* renderer) {
     for (size_t i = 0; i < particles.size(); i++) {
         particles[i].render(renderer);
@@ -132,7 +130,6 @@ void Simulation::calculateFrameRate() {
         frameCount++;
     }
 }
-
 
 float Simulation::getFrameRate() const {
     return frameRate;

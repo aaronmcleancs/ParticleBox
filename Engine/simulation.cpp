@@ -22,9 +22,10 @@ void Simulation::stop() {
     running = false;
 }
 
-void Simulation::reset() {
+
+void Simulation::reset(int count) {
     particles.clear();
-    for (int i = 0; i < 100; ++i) {
+    for (int i = 0; i < count; ++i) {
         particles.push_back(createRandomParticle());
     }
 }
@@ -99,15 +100,21 @@ void Simulation::toggleGravity() {
     physics.toggleGravity();
 }
 
-void Simulation::addParticle() {
-    if (particles.size() < 1000) { 
-        particles.push_back(createRandomParticle());
+void Simulation::setParticle(int count) {
+    if (count < 0 || count > 9999) {
+        return;
     }
-}
 
-void Simulation::removeParticle() {
-    if (!particles.empty()) {
+    int currentCount = particles.size();
+
+    while (currentCount < count) {
+        particles.push_back(createRandomParticle());
+        currentCount++;
+    }
+
+    while (currentCount > count) {
         particles.pop_back();
+        currentCount--;
     }
 }
 

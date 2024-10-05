@@ -21,12 +21,11 @@ public:
     void calculateFrameRate();
     float getFrameRate() const;
     void render(SDL_Renderer* renderer);
-    void reset();
+    void reset(int count);
     Particle createRandomParticle();
     int getParticleCount() const;
     void toggleGravity();
-    void addParticle();
-    void removeParticle();
+    void setParticle(int count);
     float simulation_speed;
 };
 

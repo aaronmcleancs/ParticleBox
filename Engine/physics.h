@@ -16,8 +16,6 @@ public:
     float gravity = 9.81;
     void toggleGravity() { gravityEnabled = !gravityEnabled; }
     std::vector<Vec2> computeForces(std::vector<Particle>& particles, int start, int end);
-    Vec2 computeInteraction(const Particle& a, const Particle& b);
-    Vec2 computeRepulsion(const Particle& a, const Particle& b);
     void applyBoundaries(Particle& particle);
 };
 

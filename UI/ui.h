@@ -22,16 +22,20 @@ private:
     SDL_Texture* resetTexture;
     SDL_Texture* particleCountTexture;
     SDL_Texture* frameRateTexture;
-    SDL_Texture* gravityTexture; 
-    SDL_Texture* addParticleTexture; 
-    SDL_Texture* removeParticleTexture; 
+    SDL_Texture* gravityTexture;
+    SDL_Texture* particleCountInputTexture;
+    SDL_Texture* frameRateCapTexture;  // New texture for frame rate cap button
+    SDL_Rect startButton;
     SDL_Rect stopButton;
     SDL_Rect resetButton;
     SDL_Rect particleCountRect;
     SDL_Rect frameRateRect;
-    SDL_Rect gravityButton; 
-    SDL_Rect addParticleButton; 
-    SDL_Rect removeParticleButton; 
+    SDL_Rect gravityButton;
+    SDL_Rect particleCountInputRect;
+    SDL_Rect frameRateCapToggleButton; // New SDL_Rect for the frame rate cap toggle button
+    std::string particleCountInput;
+    bool inputActive;
+    bool frameRateCapEnabled; // New variable to hold the state of the frame rate cap
 };
 
 #endif

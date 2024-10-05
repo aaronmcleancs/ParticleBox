@@ -13,7 +13,6 @@ int main(int argc, char* argv[]) {
     SDL_Window* guiWindow = SDL_CreateWindow("Controls", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, 400, 600, 0);
     SDL_Renderer* guiRenderer = SDL_CreateRenderer(guiWindow, -1, SDL_RENDERER_ACCELERATED);
 
-    // Load font
     TTF_Font* font = TTF_OpenFont("/Users/aaronmclean/Library/Fonts/3270-Regular.ttf", 128);
     if (!font) {
         printf("Failed to load font: %s\n", TTF_GetError());

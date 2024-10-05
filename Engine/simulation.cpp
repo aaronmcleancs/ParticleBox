@@ -57,6 +57,8 @@ void Simulation::update(double deltaTime) {
 
     calculateFrameRate();
 
+    /*Frame Rate Regulation - Comment out to cap CPU
+
     auto currentTime = std::chrono::steady_clock::now();
     auto frameDuration = std::chrono::duration_cast<std::chrono::milliseconds>(currentTime - lastFrameTime);
 
@@ -67,6 +69,7 @@ void Simulation::update(double deltaTime) {
     }
 
     lastFrameTime = std::chrono::steady_clock::now();
+    */
 }
 
 

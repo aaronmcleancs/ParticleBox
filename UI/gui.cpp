@@ -1,4 +1,4 @@
-#include "ui.h"
+#include "gui.h"
 #include "simulation.h"
 #include <SDL_ttf.h>
 #include <string>

@@ -17,12 +17,10 @@ struct Vec2 {
         return {x - other.x, y - other.y};
     }
 
-    // Scalar multiplication
     Vec2 operator*(float scalar) const {
         return {x * scalar, y * scalar};
     }
-
-    // Scalar division
+    
     Vec2 operator/(float scalar) const {
         return {x / scalar, y / scalar};
     }

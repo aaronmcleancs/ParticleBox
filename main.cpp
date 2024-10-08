@@ -1,7 +1,7 @@
 #include <SDL.h>
 #include <SDL_ttf.h>
 #include "simulation.h"
-#include "ui.h"
+#include "gui.h"
 
 int main(int argc, char* argv[]) {
     SDL_Init(SDL_INIT_VIDEO);
@@ -36,14 +36,14 @@ int main(int argc, char* argv[]) {
             gui.handleEvent(event, simulation); 
         }
 
-        simulation.update(0.16f);
+        simulation.update(0.10f);
 
-        SDL_SetRenderDrawColor(simRenderer, 0, 0, 0, 255);
+        SDL_SetRenderDrawColor(simRenderer, 5, 0, 0, 255);
         SDL_RenderClear(simRenderer);
         simulation.render(simRenderer);
         SDL_RenderPresent(simRenderer);
 
-        SDL_SetRenderDrawColor(guiRenderer, 255, 255, 255, 255);
+        SDL_SetRenderDrawColor(guiRenderer, 25, 25, 25, 255);
         SDL_RenderClear(guiRenderer);
         gui.render(simulation);
         SDL_RenderPresent(guiRenderer);

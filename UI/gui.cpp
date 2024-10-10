@@ -71,7 +71,7 @@ void GUI::render(Simulation& simulation) {
 void GUI::updateMetricsDisplay(const Simulation& simulation) {
     std::string particleCountText = "Particles: " + std::to_string(simulation.getParticleCount());
     std::string frameRateText = "FPS: " + std::to_string(simulation.getFrameRate());
-    SDL_Color textColor = {0, 0, 0, 255}; // Black text for metrics
+    SDL_Color textColor = {0, 0, 0, 255};
 
     initTexture(&particleCountTexture, particleCountText.c_str(), textColor);
     initTexture(&frameRateTexture, frameRateText.c_str(), textColor);

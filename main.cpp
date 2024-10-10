@@ -38,12 +38,12 @@ int main(int argc, char* argv[]) {
 
         simulation.update(0.10f);
 
-        SDL_SetRenderDrawColor(simRenderer, 5, 0, 0, 255);
+        SDL_SetRenderDrawColor(simRenderer, 0, 0, 0, 255);
         SDL_RenderClear(simRenderer);
         simulation.render(simRenderer);
         SDL_RenderPresent(simRenderer);
 
-        SDL_SetRenderDrawColor(guiRenderer, 25, 25, 25, 255);
+        SDL_SetRenderDrawColor(guiRenderer, 150, 150, 150, 255);
         SDL_RenderClear(guiRenderer);
         gui.render(simulation);
         SDL_RenderPresent(guiRenderer);

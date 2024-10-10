@@ -3,7 +3,6 @@
 
 std::vector<Vec2> PhysicsEngine::computeForces(std::vector<Particle>& particles, int start, int end) {
     std::vector<Vec2> forces(end - start, Vec2(0, 0));
-
     for (int i = start; i < end; ++i) {
         Vec2 netForce(0, 0);
         if (gravityEnabled) {

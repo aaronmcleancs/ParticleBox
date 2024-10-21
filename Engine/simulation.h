@@ -22,6 +22,8 @@ public:
     float getFrameRate() const;
     void render(SDL_Renderer* renderer);
     void reset(int count);
+    void spawnParticlesAtMouse(int x, int y, int count);
+    Particle createParticleAtPosition(int x, int y);
     Particle createRandomParticle();
     int getParticleCount() const;
     void toggleGravity();

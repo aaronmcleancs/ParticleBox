@@ -20,7 +20,7 @@ void Particle::render(SDL_Renderer* renderer) {
     }
 
     float speed = sqrt(velocity.x * velocity.x + velocity.y * velocity.y);
-    SDL_Color blue = {0, 0, 255, 255};
+    SDL_Color blue = {40, 40, 255, 255};
     SDL_Color orange = {255, 0, 90, 255};
     float maxSpeed = 50.0f; 
     float normSpeed = std::min(speed / maxSpeed, 1.0f);

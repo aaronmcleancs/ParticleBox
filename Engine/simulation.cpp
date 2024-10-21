@@ -57,7 +57,6 @@ void Simulation::update(double deltaTime) {
 
     calculateFrameRate();
 
-    /*Frame Rate Regulation - Comment out to cap CPU
 
     auto currentTime = std::chrono::steady_clock::now();
     auto frameDuration = std::chrono::duration_cast<std::chrono::milliseconds>(currentTime - lastFrameTime);
@@ -69,7 +68,6 @@ void Simulation::update(double deltaTime) {
     }
 
     lastFrameTime = std::chrono::steady_clock::now();
-    */
     
 }
 
@@ -130,6 +128,30 @@ void Simulation::calculateFrameRate() {
     } else {
         frameCount++;
     }
+}
+
+void Simulation::spawnParticlesAtMouse(int x, int y, int count) {
+    for (int i = 0; i < count; ++i) {
+        particles.push_back(createParticleAtPosition(x, y));
+    }
+}
+
+Particle Simulation::createParticleAtPosition(int x, int y) {
+    Vec2 pos = Vec2(static_cast<float>(x), static_cast<float>(y));
+    
+    float angle = static_cast<float>(rand() % 360) * M_PI / 180.0f;
+    float speed = static_cast<float>(rand() % 50) / 5.0f;
+    Vec2 vel = Vec2(cos(angle) * speed, sin(angle) * speed);
+    
+    SDL_Color color = {static_cast<Uint8>(rand() % 256), static_cast<Uint8>(rand() % 256), static_cast<Uint8>(rand() % 256), 255};
+    float radius = 2.0f;
+    float mass = radius / 5.0f;
+    float dipoleMoment = 0.0f;
+    float exclusionConstant = 0.0f;
+    float repulsionFactor = 1.0f;
+    int type = 0;
+    
+    return Particle(pos, vel, color, radius, mass, dipoleMoment, exclusionConstant, repulsionFactor, type);
 }
 
 float Simulation::getFrameRate() const {

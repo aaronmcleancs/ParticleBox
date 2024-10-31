@@ -3,7 +3,8 @@
 
 #include "particle.h"
 #include <vector>
-#include <cmath>   
+#include <cmath>
+#include <unordered_map> 
 
 struct PhysicsState {
     std::vector<Particle> particles;

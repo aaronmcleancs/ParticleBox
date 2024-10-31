@@ -29,46 +29,55 @@ void Simulation::reset(int count) {
         particles.push_back(createRandomParticle());
     }
 }
-
 void Simulation::update(double deltaTime) {
     if (!running) return;
-
-    int numThreads = 24;
+    const int numThreads = 8;
+    
     std::vector<std::future<void>> futures;
+    futures.reserve(numThreads);
+    
+    // Calculate chunk size
+    const size_t totalParticles = particles.size();
+    const size_t chunkSize = (totalParticles + numThreads - 1) / numThreads;
 
-    auto updateChunk = [this, deltaTime](int start, int end) {
+    auto updateChunk = [this, deltaTime](size_t start, size_t end) {
         std::vector<Vec2> forces = physics.computeForces(particles, start, end);
-        for (int i = start; i < end; ++i) {
+        for (size_t i = start; i < end; ++i) {
             particles[i].update(forces[i-start], deltaTime);
             physics.applyBoundaries(particles[i]);
         }
     };
-
-    int chunkSize = particles.size() / numThreads;
+    
     for (int i = 0; i < numThreads; ++i) {
-        int start = i * chunkSize;
-        int end = (i == numThreads - 1) ? particles.size() : (start + chunkSize);
-        futures.push_back(std::async(std::launch::async, updateChunk, start, end));
+        const size_t start = i * chunkSize;
+        const size_t end = std::min(start + chunkSize, totalParticles);
+        futures.push_back(std::async(
+            std::launch::async | std::launch::deferred,
+            updateChunk,
+            start,
+            end
+        ));
     }
-
-    for (auto &future : futures) {
+    for (auto& future : futures) {
         future.get();
     }
-
-    calculateFrameRate();
-
-
-    auto currentTime = std::chrono::steady_clock::now();
-    auto frameDuration = std::chrono::duration_cast<std::chrono::milliseconds>(currentTime - lastFrameTime);
-
-    const int targetFrameDuration = 16;
-
-    if (frameDuration.count() < targetFrameDuration) {
-        std::this_thread::sleep_for(std::chrono::milliseconds(targetFrameDuration - frameDuration.count()));
-    }
-
-    lastFrameTime = std::chrono::steady_clock::now();
     
+    calculateFrameRate();
+    
+    auto currentTime = std::chrono::steady_clock::now();
+    auto frameDuration = std::chrono::duration_cast<std::chrono::milliseconds>(
+        currentTime - lastFrameTime
+    );
+    
+    constexpr int targetFrameDuration = 16;
+    
+    if (frameDuration.count() < targetFrameDuration) {
+        std::this_thread::sleep_for(
+            std::chrono::milliseconds(targetFrameDuration - frameDuration.count())
+        );
+    }
+    
+    lastFrameTime = std::chrono::steady_clock::now();
 }
 
 void Simulation::render(SDL_Renderer* renderer) {
@@ -90,7 +99,7 @@ Particle Simulation::createRandomParticle() {
     Vec2 vel(cos(angle) * speed, sin(angle) * speed);
 
     SDL_Color color = {Uint8(rand() % 256), Uint8(rand() % 256), Uint8(rand() % 256), 255};
-    float radius = 2.0f;
+    float radius = 1.0f;
     float mass = radius / 5.0f;
 
     return Particle(pos, vel, color, radius, mass, 0.0, 0.0, 1.0, 0);
@@ -144,7 +153,7 @@ Particle Simulation::createParticleAtPosition(int x, int y) {
     Vec2 vel = Vec2(cos(angle) * speed, sin(angle) * speed);
     
     SDL_Color color = {static_cast<Uint8>(rand() % 256), static_cast<Uint8>(rand() % 256), static_cast<Uint8>(rand() % 256), 255};
-    float radius = 2.0f;
+    float radius = 1.0f;
     float mass = radius / 5.0f;
     float dipoleMoment = 0.0f;
     float exclusionConstant = 0.0f;

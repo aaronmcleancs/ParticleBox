@@ -36,7 +36,6 @@ void Simulation::update(double deltaTime) {
     std::vector<std::future<void>> futures;
     futures.reserve(numThreads);
     
-    // Calculate chunk size
     const size_t totalParticles = particles.size();
     const size_t chunkSize = (totalParticles + numThreads - 1) / numThreads;
 

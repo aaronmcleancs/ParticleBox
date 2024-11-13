@@ -62,6 +62,7 @@ std::vector<Vec2> PhysicsEngine::computeForces(std::vector<Particle>& particles,
 
                         particles[i].velocity -= impulse / particles[i].mass;
                         particles[j].velocity += impulse / particles[j].mass;
+                        
                     }
                 }
             }

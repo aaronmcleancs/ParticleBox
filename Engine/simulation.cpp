@@ -94,11 +94,11 @@ Particle Simulation::createRandomParticle() {
     Vec2 pos(x, y);
 
     float angle = float(rand() % 360) * M_PI / 180.0f;
-    float speed = float(rand() % 50) / 5.0f;
+    float speed = float(rand() % 50);
     Vec2 vel(cos(angle) * speed, sin(angle) * speed);
 
     SDL_Color color = {Uint8(rand() % 256), Uint8(rand() % 256), Uint8(rand() % 256), 255};
-    float radius = 1.0f;
+    float radius = 2.0f;
     float mass = radius / 5.0f;
 
     return Particle(pos, vel, color, radius, mass, 0.0, 0.0, 1.0, 0);
@@ -152,8 +152,8 @@ Particle Simulation::createParticleAtPosition(int x, int y) {
     Vec2 vel = Vec2(cos(angle) * speed, sin(angle) * speed);
     
     SDL_Color color = {static_cast<Uint8>(rand() % 256), static_cast<Uint8>(rand() % 256), static_cast<Uint8>(rand() % 256), 255};
-    float radius = 1.0f;
-    float mass = radius / 5.0f;
+    float radius = 2.0f;
+    float mass = radius / 2.0f;
     float dipoleMoment = 0.0f;
     float exclusionConstant = 0.0f;
     float repulsionFactor = 1.0f;

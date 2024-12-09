@@ -6,7 +6,6 @@
 #include <cmath>
 
 struct GUIStyle {
-    // Dark mode color scheme
     SDL_Color backgroundColor = {34, 34, 34, 255};
     SDL_Color panelColor = {44, 44, 44, 255};
     SDL_Color buttonColor = {64, 64, 64, 255};
@@ -47,7 +46,6 @@ GUI::GUI(SDL_Renderer* renderer, TTF_Font* font)
     gravityTexture = nullptr;
     particleCountInputTexture = nullptr;
 
-    // Initialize button text using dark mode style text color
     GUIStyle style;
     initTexture(&startTexture, "Start", style.textColor);
     initTexture(&stopTexture, "Stop", style.textColor);
@@ -75,22 +73,18 @@ void GUI::render(Simulation& simulation) {
 
     GUIStyle style;
 
-    // Draw panel background
     SDL_Rect panelRect = {0, 0, 400, 800};
     drawRect(renderer, panelRect, style.panelColor);
 
-    // Render buttons and input
     renderButton(startButton, startTexture, "Start");
     renderButton(stopButton, stopTexture, "Stop");
     renderButton(resetButton, resetTexture, "Reset");
     renderButton(gravityButton, gravityTexture, "Toggle Gravity");
 
-    // Render particleCount and FPS text with a highlight for FPS
     if (particleCountTexture) {
         SDL_RenderCopy(renderer, particleCountTexture, NULL, &particleCountRect);
     }
     if (frameRateTexture) {
-        // Draw a subtle background behind FPS to highlight it
         SDL_Rect fpsBg = frameRateRect;
         fpsBg.x -= 5; fpsBg.y -= 5; fpsBg.w += 10; fpsBg.h += 10;
         drawRect(renderer, fpsBg, {50, 50, 50, 255});
@@ -105,7 +99,6 @@ void GUI::render(Simulation& simulation) {
     destRect.w -= 10;
     SDL_RenderCopy(renderer, particleCountInputTexture, NULL, &destRect);
 
-    // Graph area
     SDL_Rect graphRect = {10, 300, 380, 150};
     renderGraph(graphRect, fpsHistory, particleCountHistory, "FPS & Particles Over Time");
 }
@@ -120,7 +113,7 @@ void GUI::updateMetricsDisplay(const Simulation& simulation) {
     std::string frameRateText = "FPS: " + std::to_string((int)std::round(simulation.getFrameRate()));
 
     initTexture(&particleCountTexture, particleCountText.c_str(), style.textColor);
-    initTexture(&frameRateTexture, frameRateText.c_str(), {0, 255, 0, 255}); // FPS in green to stand out
+    initTexture(&frameRateTexture, frameRateText.c_str(), {0, 255, 0, 255}); 
 }
 
 void GUI::initTexture(SDL_Texture** texture, const char* text, SDL_Color color) {
@@ -206,20 +199,14 @@ void GUI::renderGraph(const SDL_Rect& graphRect, const std::vector<float>& fpsDa
     float globalMax = std::max(maxFPS, maxParticles);
     if (globalMax < 1.0f) globalMax = 1.0f;
 
-    // Draw axis lines
     SDL_SetRenderDrawColor(renderer, style.graphAxisColor.r, style.graphAxisColor.g, style.graphAxisColor.b, style.graphAxisColor.a);
-    // X-axis
     SDL_RenderDrawLine(renderer, graphRect.x, graphRect.y + graphRect.h - 20, graphRect.x + graphRect.w, graphRect.y + graphRect.h - 20);
-    // Y-axis
     SDL_RenderDrawLine(renderer, graphRect.x + 40, graphRect.y, graphRect.x + 40, graphRect.y + graphRect.h);
 
-    // Draw FPS line in green
     drawLineGraph(fpsData, graphRect, globalMax, style.graphLineColor, currentSampleIndex);
-    // Draw particle count line in red
     SDL_Color particleLineColor = {220, 0, 0, 255};
     drawLineGraph(particleData, graphRect, globalMax, particleLineColor, currentSampleIndex);
 
-    // Render title
     SDL_Color titleColor = style.textColor;
     SDL_Texture* titleTex = nullptr;
     initTexture(&titleTex, title.c_str(), titleColor);

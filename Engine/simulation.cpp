@@ -11,9 +11,7 @@
 #include <algorithm>
 
 Simulation::Simulation() : running(false), frameCount(0), frameRate(0.0f) {
-    // Using a more modern random engine for better performance & distribution
     static std::mt19937 rng(static_cast<unsigned>(std::time(nullptr)));
-    // Store rng in a thread-local static to avoid contention if needed
     lastFrameTime = std::chrono::steady_clock::now();
     simulation_speed = 0.0016f;
 }
@@ -27,7 +25,6 @@ void Simulation::stop() {
 }
 
 void Simulation::reset(int count) {
-    // Reserve memory to reduce allocations when resetting
     particles.clear();
     particles.reserve(static_cast<size_t>(count));
     for (int i = 0; i < count; ++i) {
@@ -38,7 +35,7 @@ void Simulation::reset(int count) {
 void Simulation::update(double deltaTime) {
     if (!running) return;
 
-    const int numThreads = 8; // Potentially configurable
+    const int numThreads = 8;
     const size_t totalParticles = particles.size();
     if (totalParticles == 0) {
         calculateFrameRate();
@@ -46,8 +43,6 @@ void Simulation::update(double deltaTime) {
     }
 
     const size_t chunkSize = (totalParticles + numThreads - 1) / numThreads;
-
-    // Use a thread pool or re-use threads could be faster, but let's just keep async for now.
     std::vector<std::future<void>> futures;
     futures.reserve(numThreads);
 
@@ -55,7 +50,6 @@ void Simulation::update(double deltaTime) {
         if (end <= start) return;
         std::vector<Vec2> forces = physics.computeForces(particles, static_cast<int>(start), static_cast<int>(end));
         for (size_t i = start; i < end; ++i) {
-            // Inline particle update for fewer function calls:
             Particle &p = particles[i];
             p.velocity.x += (forces[i - start].x / p.mass) * (float)deltaTime;
             p.velocity.y += (forces[i - start].y / p.mass) * (float)deltaTime;
@@ -65,35 +59,30 @@ void Simulation::update(double deltaTime) {
             physics.applyBoundaries(p);
         }
     };
-
-    // Dispatch tasks
     size_t processed = 0;
     for (int i = 0; i < numThreads; ++i) {
         const size_t start = processed;
         const size_t end = std::min(start + chunkSize, totalParticles);
         processed = end;
         if (start < end) {
-            // Force std::launch::async to ensure parallelization
             futures.push_back(std::async(std::launch::async, updateChunk, start, end));
         } else {
             break;
         }
     }
 
-    // Wait for all tasks
+
     for (auto& future : futures) {
         future.get();
     }
 
     calculateFrameRate();
 
-    // Simple frame capping - to reduce overhead, only do if necessary
     auto currentTime = std::chrono::steady_clock::now();
     auto frameDuration = std::chrono::duration_cast<std::chrono::milliseconds>(
         currentTime - lastFrameTime
     );
 
-    // Potentially make target frame duration configurable
     constexpr int targetFrameDuration = 16;
     if (frameDuration.count() < targetFrameDuration) {
         std::this_thread::sleep_for(
@@ -105,7 +94,6 @@ void Simulation::update(double deltaTime) {
 }
 
 void Simulation::render(SDL_Renderer* renderer) {
-    // Rendering is I/O bound, just loop
     for (Particle &p : particles) {
         p.render(renderer);
     }
@@ -155,7 +143,6 @@ void Simulation::setParticle(int count) {
             particles.push_back(createRandomParticle());
         }
     } else {
-        // Shrink in place if possible
         particles.erase(particles.begin() + count, particles.end());
     }
 }
@@ -167,7 +154,6 @@ void Simulation::calculateFrameRate() {
     auto currentTime = std::chrono::steady_clock::now();
     double secondsPassed = std::chrono::duration_cast<std::chrono::duration<double>>(currentTime - frameRateStartTime).count();
 
-    // Recalculate frame rate every second
     if (secondsPassed >= 1.0) {
         frameRate = frameCount / (float)secondsPassed;
         frameCount = 0;
@@ -203,7 +189,6 @@ Particle Simulation::createParticleAtPosition(int x, int y) {
     };
 
     float radius = 2.0f;
-    // Slightly heavier mass for these manually spawned particles
     float mass = radius / 2.0f; 
     float dipoleMoment = 0.0f;
     float exclusionConstant = 0.0f;

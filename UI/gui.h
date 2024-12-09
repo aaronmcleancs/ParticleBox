@@ -4,6 +4,8 @@
 #include <SDL.h>
 #include <SDL_ttf.h>
 #include "simulation.h"
+#include <string>
+#include <vector>
 
 class GUI {
 public:
@@ -17,6 +19,7 @@ public:
 private:
     SDL_Renderer* renderer;
     TTF_Font* font;
+
     SDL_Texture* startTexture;
     SDL_Texture* stopTexture;
     SDL_Texture* resetTexture;
@@ -24,6 +27,7 @@ private:
     SDL_Texture* frameRateTexture;
     SDL_Texture* gravityTexture;
     SDL_Texture* particleCountInputTexture;
+
     SDL_Rect startButton;
     SDL_Rect stopButton;
     SDL_Rect resetButton;
@@ -31,9 +35,19 @@ private:
     SDL_Rect frameRateRect;
     SDL_Rect gravityButton;
     SDL_Rect particleCountInputRect;
+
     std::string particleCountInput;
     bool inputActive;
-};
 
+    std::vector<float> fpsHistory;
+    std::vector<float> particleCountHistory;
+    size_t maxGraphSamples;
+    size_t currentSampleIndex;
+
+    bool pointInRect(int x, int y, const SDL_Rect& rect);
+    void renderButton(const SDL_Rect& rect, SDL_Texture* texture, const std::string& label);
+    void renderGraph(const SDL_Rect& graphRect, const std::vector<float>& fpsData, const std::vector<float>& particleData, const std::string& title);
+    void drawLineGraph(const std::vector<float>& data, const SDL_Rect& graphRect, float maxVal, const SDL_Color& lineColor, int currentIndex);
+};
 
 #endif

@@ -40,5 +40,3 @@ Steps
 
 3. Run the Simulator
    ./ParticleSimulator
-
-[Convert to GIF project speed change]

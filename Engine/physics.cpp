@@ -5,8 +5,10 @@
 
 void PhysicsState::updateState(const std::vector<Vec2>& forces, float deltaTime) {
     for (size_t i = 0; i < particles.size(); ++i) {
+        
         particles[i].velocity.x += (forces[i].x / particles[i].mass) * deltaTime;
         particles[i].velocity.y += (forces[i].y / particles[i].mass) * deltaTime;
+        
         particles[i].position.x += particles[i].velocity.x * deltaTime;
         particles[i].position.y += particles[i].velocity.y * deltaTime;
     }
@@ -14,14 +16,13 @@ void PhysicsState::updateState(const std::vector<Vec2>& forces, float deltaTime)
 
 std::vector<Vec2> PhysicsEngine::computeForces(std::vector<Particle>& particles, int start, int end) {
     const float cellSize = 8.0f;
-    
     const int windowWidth = 1200;
     const int windowHeight = 800;
     const int gridWidth = (int)std::ceil(windowWidth / cellSize);
     const int gridHeight = (int)std::ceil(windowHeight / cellSize);
 
+    
     std::vector<std::vector<int>> cells(gridWidth * gridHeight);
-
     for (int i = start; i < end; ++i) {
         int cellX = (int)(particles[i].position.x / cellSize);
         int cellY = (int)(particles[i].position.y / cellSize);
@@ -33,13 +34,15 @@ std::vector<Vec2> PhysicsEngine::computeForces(std::vector<Particle>& particles,
     }
 
     std::vector<Vec2> forces(end - start, Vec2(0, 0));
+
+    const float repulsionStrength = 1.5f;
+
     for (int i = start; i < end; ++i) {
         Vec2 netForce(0, 0);
-
+        
         if (gravityEnabled) {
             netForce.y += particles[i].mass * gravity;
         }
-
         int cellX = (int)(particles[i].position.x / cellSize);
         int cellY = (int)(particles[i].position.y / cellSize);
         if (cellX < 0) cellX = 0;
@@ -47,6 +50,7 @@ std::vector<Vec2> PhysicsEngine::computeForces(std::vector<Particle>& particles,
         if (cellY < 0) cellY = 0;
         if (cellY >= gridHeight) cellY = gridHeight - 1;
 
+        
         for (int dx = -1; dx <= 1; ++dx) {
             for (int dy = -1; dy <= 1; ++dy) {
                 int nx = cellX + dx;
@@ -61,28 +65,24 @@ std::vector<Vec2> PhysicsEngine::computeForces(std::vector<Particle>& particles,
                     float distance = direction.magnitude();
                     float combinedRadius = particles[i].radius + particles[j].radius;
 
+                    
                     if (distance < combinedRadius && distance > 0.0f) {
                         Vec2 normal = direction / distance;
                         float overlap = combinedRadius - distance;
-                        float totalMass = particles[i].mass + particles[j].mass;
-                        float separationScale = overlap / totalMass;
-                        particles[i].position -= normal * (separationScale * particles[j].mass);
-                        particles[j].position += normal * (separationScale * particles[i].mass);
+                        
+                        Vec2 repulsionForce = normal * (repulsionStrength * overlap);
 
-                        Vec2 relativeVelocity = particles[j].velocity - particles[i].velocity;
-                        float restitution = 0.8f;
-                        float impulseMagnitude = -(1.0f + restitution) * relativeVelocity.dot(normal) / 
-                                                 (1.0f / particles[i].mass + 1.0f / particles[j].mass);
-                        Vec2 impulse = normal * impulseMagnitude;
-
-                        particles[i].velocity -= impulse / particles[i].mass;
-                        particles[j].velocity += impulse / particles[j].mass;
+                        
+                        netForce -= repulsionForce; 
+                        
+                        if (j >= start && j < end) {
+                            forces[j - start] += repulsionForce; 
+                        }
                     }
                 }
             }
         }
-
-        forces[i - start] = netForce;
+        forces[i - start] = forces[i - start] + netForce;
     }
 
     return forces;

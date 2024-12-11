@@ -36,6 +36,7 @@ void Simulation::update(double deltaTime) {
     if (!running) return;
 
     const int numThreads = 8;
+    
     const size_t totalParticles = particles.size();
     if (totalParticles == 0) {
         calculateFrameRate();
@@ -97,6 +98,24 @@ void Simulation::render(SDL_Renderer* renderer) {
     for (Particle &p : particles) {
         p.render(renderer);
     }
+}
+
+Vec2 Simulation::getAverageVelocity() const {
+    size_t n = particles.size();
+    if (n == 0) {
+        return Vec2(0.0f, 0.0f);
+    }
+
+    Vec2 sumVelocity(0.0f, 0.0f);
+    for (const Particle &p : particles) {
+        sumVelocity.x += p.velocity.x;
+        sumVelocity.y += p.velocity.y;
+    }
+
+    sumVelocity.x /= static_cast<float>(n);
+    sumVelocity.y /= static_cast<float>(n);
+
+    return sumVelocity;
 }
 
 Particle Simulation::createRandomParticle() {
@@ -172,7 +191,7 @@ Particle Simulation::createParticleAtPosition(int x, int y) {
     static thread_local std::mt19937 rng(static_cast<unsigned>(std::time(nullptr)) ^
                                          static_cast<unsigned>(std::hash<std::thread::id>{}(std::this_thread::get_id())));
     static std::uniform_real_distribution<float> distAngle(0.0f, 2.0f * (float)M_PI);
-    static std::uniform_real_distribution<float> distSpeed(0.0f, 10.0f); // smaller speed range
+    static std::uniform_real_distribution<float> distSpeed(0.0f, 10.0f);
     static std::uniform_int_distribution<int> distColor(0, 255);
 
     Vec2 pos(static_cast<float>(x), static_cast<float>(y));
@@ -205,37 +224,3 @@ float Simulation::getFrameRate() const {
 int Simulation::getParticleCount() const {
     return (int)particles.size();
 }
-#ifndef SIMULATION_H
-#define SIMULATION_H
-
-#include <vector>
-#include "particle.h"
-#include "physics.h"
-
-class Simulation {
-    PhysicsEngine physics;
-    std::vector<Particle> particles;
-    bool running;
-    std::chrono::steady_clock::time_point lastFrameTime;
-    int frameCount;
-    float frameRate;
-
-public:
-    Simulation();
-    void start();
-    void stop();
-    void update(double deltaTime);
-    void calculateFrameRate();
-    float getFrameRate() const;
-    void render(SDL_Renderer* renderer);
-    void reset(int count);
-    void spawnParticlesAtMouse(int x, int y, int count);
-    Particle createParticleAtPosition(int x, int y);
-    Particle createRandomParticle();
-    int getParticleCount() const;
-    void toggleGravity();
-    void setParticle(int count);
-    float simulation_speed;
-};
-
-#endif

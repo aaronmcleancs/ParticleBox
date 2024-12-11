@@ -29,6 +29,7 @@ public:
     void toggleGravity();
     void setParticle(int count);
     float simulation_speed;
+    Vec2 getAverageVelocity() const;
 };
 
 #endif

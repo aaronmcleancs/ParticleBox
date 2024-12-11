@@ -14,10 +14,10 @@ struct GUIStyle {
     SDL_Color inputActiveColor = {60, 60, 60, 255};
     SDL_Color borderColor = {100, 100, 100, 255};
 
-    // Graph style changes:
-    SDL_Color graphBackground = {0, 0, 0, 255};    // Black background
+    
+    SDL_Color graphBackground = {0, 0, 0, 255};    
     SDL_Color graphLineColor = {0, 180, 0, 255};
-    SDL_Color graphAxisColor = {160, 160, 160, 255}; // Axis lines/colors are now irrelevant
+    SDL_Color graphAxisColor = {160, 160, 160, 255}; 
 };
 
 static void drawRect(SDL_Renderer* renderer, const SDL_Rect& rect, const SDL_Color& color, bool filled = true) {
@@ -31,19 +31,19 @@ static void drawRect(SDL_Renderer* renderer, const SDL_Rect& rect, const SDL_Col
 GUI::GUI(SDL_Renderer* renderer, TTF_Font* font) 
     : renderer(renderer), font(font), inputActive(false), particleCountInput("100") 
 {
-    // Arrange buttons in 2x2 grid:
-    // Example layout:
-    // Start(10,50)       Stop(110,50)
-    // Reset(10,100)      Gravity(110,100)
+    
+    
+    
+    
     startButton =  {10,  50, 80, 40};
     stopButton =   {110, 50, 80, 40};
     resetButton =  {10,  100,80, 40};
     gravityButton= {110, 100,80, 40};
 
-    // Move the particleCountRect, frameRateRect, and input fields as desired
+    
     particleCountRect =    {10, 10, 180, 30};
     frameRateRect =        {200, 10, 180, 30};
-    // Position the input below the buttons (for example, below the 2x2 grid):
+    
     particleCountInputRect = {10, 160, 180, 40};
 
     startTexture = nullptr;
@@ -85,13 +85,13 @@ void GUI::render(Simulation& simulation) {
     SDL_Rect panelRect = {0, 0, 400, 800};
     drawRect(renderer, panelRect, style.panelColor);
 
-    // Render buttons in new layout
+    
     renderButton(startButton, startTexture, "Start");
     renderButton(stopButton, stopTexture, "Stop");
     renderButton(resetButton, resetTexture, "Reset");
     renderButton(gravityButton, gravityTexture, "Toggle Gravity");
 
-    // Render particle and frame info (optional)
+    
     if (particleCountTexture) {
         SDL_RenderCopy(renderer, particleCountTexture, NULL, &particleCountRect);
     }
@@ -112,12 +112,12 @@ void GUI::render(Simulation& simulation) {
         SDL_RenderCopy(renderer, particleCountInputTexture, NULL, &destRect);
     }
 
-    // First graph: FPS & Particles
-    // Black background, no titles, no axes
+    
+    
     SDL_Rect graphRect = {10, 220, 380, 150};
     renderGraph(graphRect, fpsHistory, particleCountHistory, "");
 
-    // Second graph: Average Velocity
+    
     SDL_Rect avgVelGraphRect = {10, 400, 380, 150};
     renderAverageVelocityGraph(avgVelGraphRect, averageVelocityHistory, "");
 }
@@ -214,7 +214,7 @@ void GUI::renderButton(const SDL_Rect& rect, SDL_Texture* texture, const std::st
     }
 }
 
-// Modified renderGraph to remove titles and axes, keep black background only
+
 void GUI::renderGraph(const SDL_Rect& graphRect, const std::vector<float>& fpsData, const std::vector<float>& particleData, const std::string& title) {
     GUIStyle style;
     drawRect(renderer, graphRect, style.graphBackground);
@@ -224,11 +224,11 @@ void GUI::renderGraph(const SDL_Rect& graphRect, const std::vector<float>& fpsDa
     float globalMax = std::max(maxFPS, maxParticles);
     if (globalMax < 1.0f) globalMax = 1.0f;
 
-    // No axes, no title, just lines
-    // Draw FPS line (Green)
+    
+    
     drawLineGraph(fpsData, graphRect, globalMax, style.graphLineColor, currentSampleIndex);
 
-    // Draw Particle count line (Red)
+    
     SDL_Color particleLineColor = {220, 0, 0, 255};
     drawLineGraph(particleData, graphRect, globalMax, particleLineColor, currentSampleIndex);
 }
@@ -240,7 +240,7 @@ void GUI::renderAverageVelocityGraph(const SDL_Rect& graphRect, const std::vecto
     float maxVel = *std::max_element(avgVelData.begin(), avgVelData.end());
     if (maxVel < 1.0f) maxVel = 1.0f;
 
-    // No axes, no title, just line
+    
     SDL_Color velLineColor = {0, 0, 220, 255};
     drawLineGraph(avgVelData, graphRect, maxVel, velLineColor, currentSampleIndex);
 }
@@ -249,7 +249,7 @@ void GUI::drawLineGraph(const std::vector<float>& data, const SDL_Rect& graphRec
     int count = (int)data.size();
     if (count < 2) return;
 
-    // Remove margins and axes; just use the entire graphRect area
+    
     float width = (float)graphRect.w;
     float height = (float)graphRect.h;
 

@@ -41,7 +41,7 @@ private:
 
     std::vector<float> fpsHistory;
     std::vector<float> particleCountHistory;
-    std::vector<float> averageVelocityHistory; // NEW HISTORY VECTOR
+    std::vector<float> averageVelocityHistory; 
     size_t maxGraphSamples;
     size_t currentSampleIndex;
 
@@ -51,7 +51,7 @@ private:
     void renderGraph(const SDL_Rect& graphRect, const std::vector<float>& fpsData, const std::vector<float>& particleData, const std::string& title);
     void drawLineGraph(const std::vector<float>& data, const SDL_Rect& graphRect, float maxVal, const SDL_Color& lineColor, int currentIndex);
 
-    // NEW: a separate function to render the average velocity graph
+    
     void renderAverageVelocityGraph(const SDL_Rect& graphRect, const std::vector<float>& avgVelData, const std::string& title);
 };
 

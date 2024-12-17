@@ -13,6 +13,11 @@ class Simulation {
     int frameCount;
     float frameRate;
 
+    
+    bool multithreadingEnabled;
+    bool gridEnabled;
+    bool reducedPairwiseComparisonsEnabled;
+
 public:
     Simulation();
     void start();
@@ -30,6 +35,16 @@ public:
     void setParticle(int count);
     float simulation_speed;
     Vec2 getAverageVelocity() const;
+
+    
+    void toggleMultithreading() { multithreadingEnabled = !multithreadingEnabled; }
+    void toggleGrid() { gridEnabled = !gridEnabled; physics.setGridEnabled(gridEnabled); }
+    void toggleReducedPairwiseComparisons() { reducedPairwiseComparisonsEnabled = !reducedPairwiseComparisonsEnabled; physics.setReducedPairwiseComparisonsEnabled(reducedPairwiseComparisonsEnabled); }
+
+    
+    bool isMultithreadingEnabled() const { return multithreadingEnabled; }
+    bool isGridEnabled() const { return gridEnabled; }
+    bool isReducedPairwiseComparisonsEnabled() const { return reducedPairwiseComparisonsEnabled; }
 };
 
 #endif

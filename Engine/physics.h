@@ -12,13 +12,22 @@ struct PhysicsState {
 };
 
 class PhysicsEngine {
-     bool gravityEnabled = true;
+    bool gravityEnabled = true;
+
+    
+    bool gridEnabled = true;
+    bool reducedPairwiseComparisonsEnabled = true;
+
 public:
     float gravity = 9.81;
     void toggleGravity() { gravityEnabled = !gravityEnabled; }
+    
+    
+    void setGridEnabled(bool enabled) { gridEnabled = enabled; }
+    void setReducedPairwiseComparisonsEnabled(bool enabled) { reducedPairwiseComparisonsEnabled = enabled; }
+
     std::vector<Vec2> computeForces(std::vector<Particle>& particles, int start, int end);
     void applyBoundaries(Particle& particle);
 };
-
 
 #endif 

@@ -10,10 +10,19 @@
 #include <random>
 #include <algorithm>
 
-Simulation::Simulation() : running(false), frameCount(0), frameRate(0.0f) {
+Simulation::Simulation() 
+    : running(false), 
+      frameCount(0), 
+      frameRate(0.0f),
+      multithreadingEnabled(true), 
+      gridEnabled(true),
+      reducedPairwiseComparisonsEnabled(true) 
+{
     static std::mt19937 rng(static_cast<unsigned>(std::time(nullptr)));
     lastFrameTime = std::chrono::steady_clock::now();
     simulation_speed = 0.0016f;
+    physics.setGridEnabled(gridEnabled);
+    physics.setReducedPairwiseComparisonsEnabled(reducedPairwiseComparisonsEnabled);
 }
 
 void Simulation::start() {
@@ -43,38 +52,52 @@ void Simulation::update(double deltaTime) {
         return;
     }
 
-    const size_t chunkSize = (totalParticles + numThreads - 1) / numThreads;
-    std::vector<std::future<void>> futures;
-    futures.reserve(numThreads);
+    if (multithreadingEnabled) {
+        const size_t chunkSize = (totalParticles + numThreads - 1) / numThreads;
+        std::vector<std::future<void>> futures;
+        futures.reserve(numThreads);
 
-    auto updateChunk = [this, deltaTime](size_t start, size_t end) {
-        if (end <= start) return;
-        std::vector<Vec2> forces = physics.computeForces(particles, static_cast<int>(start), static_cast<int>(end));
-        for (size_t i = start; i < end; ++i) {
+        auto updateChunk = [this, deltaTime](size_t start, size_t end) {
+            if (end <= start) return;
+            std::vector<Vec2> forces = physics.computeForces(particles, static_cast<int>(start), static_cast<int>(end));
+            for (size_t i = start; i < end; ++i) {
+                Particle &p = particles[i];
+                p.velocity.x += (forces[i - start].x / p.mass) * (float)deltaTime;
+                p.velocity.y += (forces[i - start].y / p.mass) * (float)deltaTime;
+                p.position.x += p.velocity.x * (float)deltaTime;
+                p.position.y += p.velocity.y * (float)deltaTime;
+
+                physics.applyBoundaries(p);
+            }
+        };
+
+        size_t processed = 0;
+        for (int i = 0; i < numThreads; ++i) {
+            const size_t start = processed;
+            const size_t end = std::min(start + chunkSize, totalParticles);
+            processed = end;
+            if (start < end) {
+                futures.push_back(std::async(std::launch::async, updateChunk, start, end));
+            } else {
+                break;
+            }
+        }
+
+        for (auto& future : futures) {
+            future.get();
+        }
+    } else {
+        
+        std::vector<Vec2> forces = physics.computeForces(particles, 0, static_cast<int>(totalParticles));
+        for (size_t i = 0; i < totalParticles; ++i) {
             Particle &p = particles[i];
-            p.velocity.x += (forces[i - start].x / p.mass) * (float)deltaTime;
-            p.velocity.y += (forces[i - start].y / p.mass) * (float)deltaTime;
+            p.velocity.x += (forces[i].x / p.mass) * (float)deltaTime;
+            p.velocity.y += (forces[i].y / p.mass) * (float)deltaTime;
             p.position.x += p.velocity.x * (float)deltaTime;
             p.position.y += p.velocity.y * (float)deltaTime;
 
             physics.applyBoundaries(p);
         }
-    };
-    size_t processed = 0;
-    for (int i = 0; i < numThreads; ++i) {
-        const size_t start = processed;
-        const size_t end = std::min(start + chunkSize, totalParticles);
-        processed = end;
-        if (start < end) {
-            futures.push_back(std::async(std::launch::async, updateChunk, start, end));
-        } else {
-            break;
-        }
-    }
-
-
-    for (auto& future : futures) {
-        future.get();
     }
 
     calculateFrameRate();

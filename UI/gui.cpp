@@ -14,7 +14,6 @@ struct GUIStyle {
     SDL_Color inputActiveColor = {60, 60, 60, 255};
     SDL_Color borderColor = {100, 100, 100, 255};
 
-    
     SDL_Color graphBackground = {0, 0, 0, 255};    
     SDL_Color graphLineColor = {0, 180, 0, 255};
     SDL_Color graphAxisColor = {160, 160, 160, 255}; 
@@ -32,26 +31,32 @@ GUI::GUI(SDL_Renderer* renderer, TTF_Font* font)
     : renderer(renderer), font(font), inputActive(false), particleCountInput("100") 
 {
     
-    
-    
-    
     startButton =  {10,  50, 80, 40};
     stopButton =   {110, 50, 80, 40};
     resetButton =  {10,  100,80, 40};
     gravityButton= {110, 100,80, 40};
 
     
+    multithreadingButton = {10,  150, 180, 40};
+    gridButton =            {10,  200, 180, 40};
+    reducedPairwiseButton = {10,  250, 180, 40};
+
+    
     particleCountRect =    {10, 10, 180, 30};
     frameRateRect =        {200, 10, 180, 30};
     
-    particleCountInputRect = {10, 160, 180, 40};
+    particleCountInputRect = {10, 310, 180, 40};
 
+    
     startTexture = nullptr;
     stopTexture = nullptr;
     resetTexture = nullptr;
+    gravityTexture = nullptr;
+    multithreadingTexture = nullptr; 
+    gridTexture = nullptr;            
+    reducedPairwiseTexture = nullptr; 
     particleCountTexture = nullptr;
     frameRateTexture = nullptr;
-    gravityTexture = nullptr;
     particleCountInputTexture = nullptr;
 
     GUIStyle style;
@@ -59,6 +64,9 @@ GUI::GUI(SDL_Renderer* renderer, TTF_Font* font)
     initTexture(&stopTexture, "Stop", style.textColor);
     initTexture(&resetTexture, "Reset", style.textColor);
     initTexture(&gravityTexture, "Toggle Gravity", style.textColor);
+    initTexture(&multithreadingTexture, "Toggle Multithreading", style.textColor); 
+    initTexture(&gridTexture, "Toggle Grid", style.textColor);                     
+    initTexture(&reducedPairwiseTexture, "Toggle Pairwise", style.textColor);      
 
     maxGraphSamples = 60;
     fpsHistory.resize(maxGraphSamples, 0.0f);
@@ -71,9 +79,12 @@ GUI::~GUI() {
     SDL_DestroyTexture(startTexture);
     SDL_DestroyTexture(stopTexture);
     SDL_DestroyTexture(resetTexture);
+    SDL_DestroyTexture(gravityTexture);
+    SDL_DestroyTexture(multithreadingTexture); 
+    SDL_DestroyTexture(gridTexture);            
+    SDL_DestroyTexture(reducedPairwiseTexture); 
     if (particleCountTexture) SDL_DestroyTexture(particleCountTexture);
     if (frameRateTexture) SDL_DestroyTexture(frameRateTexture);
-    SDL_DestroyTexture(gravityTexture);
     if (particleCountInputTexture) SDL_DestroyTexture(particleCountInputTexture);
 }
 
@@ -82,6 +93,7 @@ void GUI::render(Simulation& simulation) {
 
     GUIStyle style;
 
+    
     SDL_Rect panelRect = {0, 0, 400, 800};
     drawRect(renderer, panelRect, style.panelColor);
 
@@ -90,6 +102,19 @@ void GUI::render(Simulation& simulation) {
     renderButton(stopButton, stopTexture, "Stop");
     renderButton(resetButton, resetTexture, "Reset");
     renderButton(gravityButton, gravityTexture, "Toggle Gravity");
+
+    
+    std::string mtLabel = simulation.isMultithreadingEnabled() ? "Multithreading: ON" : "Multithreading: OFF";
+    initTexture(&multithreadingTexture, mtLabel.c_str(), style.textColor);
+    renderButton(multithreadingButton, multithreadingTexture, mtLabel);
+
+    std::string gridLabel = simulation.isGridEnabled() ? "Grid: ON" : "Grid: OFF";
+    initTexture(&gridTexture, gridLabel.c_str(), style.textColor);
+    renderButton(gridButton, gridTexture, gridLabel);
+
+    std::string pairwiseLabel = simulation.isReducedPairwiseComparisonsEnabled() ? "Pairwise: ON" : "Pairwise: OFF";
+    initTexture(&reducedPairwiseTexture, pairwiseLabel.c_str(), style.textColor);
+    renderButton(reducedPairwiseButton, reducedPairwiseTexture, pairwiseLabel);
 
     
     if (particleCountTexture) {
@@ -102,6 +127,7 @@ void GUI::render(Simulation& simulation) {
         SDL_RenderCopy(renderer, frameRateTexture, NULL, &frameRateRect);
     }
 
+    
     SDL_Color inputColor = inputActive ? style.inputActiveColor : style.backgroundColor;
     drawRect(renderer, particleCountInputRect, inputColor);
     initTexture(&particleCountInputTexture, particleCountInput.c_str(), style.textColor);
@@ -113,12 +139,10 @@ void GUI::render(Simulation& simulation) {
     }
 
     
-    
-    SDL_Rect graphRect = {10, 220, 380, 150};
+    SDL_Rect graphRect = {10, 360, 380, 150};
     renderGraph(graphRect, fpsHistory, particleCountHistory, "");
 
-    
-    SDL_Rect avgVelGraphRect = {10, 400, 380, 150};
+    SDL_Rect avgVelGraphRect = {10, 530, 380, 150};
     renderAverageVelocityGraph(avgVelGraphRect, averageVelocityHistory, "");
 }
 
@@ -164,6 +188,12 @@ void GUI::handleEvent(SDL_Event& event, Simulation& simulation) {
             simulation.reset(newParticleCountReset);
         } else if (pointInRect(x, y, gravityButton)) {
             simulation.toggleGravity();
+        } else if (pointInRect(x, y, multithreadingButton)) { 
+            simulation.toggleMultithreading();
+        } else if (pointInRect(x, y, gridButton)) { 
+            simulation.toggleGrid();
+        } else if (pointInRect(x, y, reducedPairwiseButton)) { 
+            simulation.toggleReducedPairwiseComparisons();
         }
 
         if (pointInRect(x, y, particleCountInputRect)) {
@@ -196,13 +226,16 @@ bool GUI::pointInRect(int x, int y, const SDL_Rect& rect) {
             y >= rect.y && y <= rect.y + rect.h);
 }
 
-void GUI::renderButton(const SDL_Rect& rect, SDL_Texture* texture, const std::string& label) {
+void GUI::renderButton(const SDL_Rect& rect, SDL_Texture* texture, const std::string& label, bool toggled) {
     GUIStyle style;
     int mouseX, mouseY;
     SDL_GetMouseState(&mouseX, &mouseY);
     bool hovered = pointInRect(mouseX, mouseY, rect);
 
     SDL_Color bgColor = hovered ? style.buttonHoverColor : style.buttonColor;
+    if (toggled) {
+        bgColor = {100, 180, 100, 255}; 
+    }
     drawRect(renderer, rect, bgColor);
     if (texture) {
         SDL_RenderCopy(renderer, texture, NULL, &rect);
@@ -214,7 +247,6 @@ void GUI::renderButton(const SDL_Rect& rect, SDL_Texture* texture, const std::st
     }
 }
 
-
 void GUI::renderGraph(const SDL_Rect& graphRect, const std::vector<float>& fpsData, const std::vector<float>& particleData, const std::string& title) {
     GUIStyle style;
     drawRect(renderer, graphRect, style.graphBackground);
@@ -225,10 +257,8 @@ void GUI::renderGraph(const SDL_Rect& graphRect, const std::vector<float>& fpsDa
     if (globalMax < 1.0f) globalMax = 1.0f;
 
     
-    
     drawLineGraph(fpsData, graphRect, globalMax, style.graphLineColor, currentSampleIndex);
 
-    
     SDL_Color particleLineColor = {220, 0, 0, 255};
     drawLineGraph(particleData, graphRect, globalMax, particleLineColor, currentSampleIndex);
 }
@@ -249,15 +279,14 @@ void GUI::drawLineGraph(const std::vector<float>& data, const SDL_Rect& graphRec
     int count = (int)data.size();
     if (count < 2) return;
 
-    
     float width = (float)graphRect.w;
     float height = (float)graphRect.h;
 
     SDL_SetRenderDrawColor(renderer, lineColor.r, lineColor.g, lineColor.b, lineColor.a);
 
     for (int i = 0; i < count - 1; i++) {
-        int idx1 = (currentIndex + i) % count;
-        int idx2 = (currentIndex + i + 1) % count;
+        int idx1 = (currentSampleIndex + i) % count;
+        int idx2 = (currentSampleIndex + i + 1) % count;
 
         float val1 = data[idx1];
         float val2 = data[idx2];

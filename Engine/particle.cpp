@@ -3,7 +3,7 @@
 #include <algorithm>
 
 void Particle::update(const Vec2& force, float deltaTime) {
-    Vec2 acceleration = force / mass;
+    Vec2 acceleration = force * invMass;
     velocity += acceleration * deltaTime; 
     position += velocity * deltaTime;
 }
@@ -19,7 +19,7 @@ void Particle::render(SDL_Renderer* renderer) {
         return;
     }
 
-    float speed = sqrt(velocity.x * velocity.x + velocity.y * velocity.y);
+    float speed = std::sqrt(velocity.x * velocity.x + velocity.y * velocity.y);
     SDL_Color blue = {40, 40, 255, 255};
     SDL_Color orange = {200, 20, 20, 55};
     float maxSpeed = 50.0f; 

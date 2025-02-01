@@ -9,6 +9,7 @@
 #include <numeric>
 #include <random>
 #include <algorithm>
+#include <chrono>
 
 Simulation::Simulation() 
     : running(false), 
@@ -44,7 +45,10 @@ void Simulation::reset(int count) {
 void Simulation::update(double deltaTime) {
     if (!running) return;
 
-    const int numThreads = 8;
+    unsigned int numThreads = std::thread::hardware_concurrency();
+    if (numThreads == 0) {
+        numThreads = 4;
+    }
     
     const size_t totalParticles = particles.size();
     if (totalParticles == 0) {
@@ -62,8 +66,8 @@ void Simulation::update(double deltaTime) {
             std::vector<Vec2> forces = physics.computeForces(particles, static_cast<int>(start), static_cast<int>(end));
             for (size_t i = start; i < end; ++i) {
                 Particle &p = particles[i];
-                p.velocity.x += (forces[i - start].x / p.mass) * (float)deltaTime;
-                p.velocity.y += (forces[i - start].y / p.mass) * (float)deltaTime;
+                p.velocity.x += (forces[i - start].x * p.invMass) * (float)deltaTime;
+                p.velocity.y += (forces[i - start].y * p.invMass) * (float)deltaTime;
                 p.position.x += p.velocity.x * (float)deltaTime;
                 p.position.y += p.velocity.y * (float)deltaTime;
 
@@ -72,7 +76,7 @@ void Simulation::update(double deltaTime) {
         };
 
         size_t processed = 0;
-        for (int i = 0; i < numThreads; ++i) {
+        for (unsigned int i = 0; i < numThreads; ++i) {
             const size_t start = processed;
             const size_t end = std::min(start + chunkSize, totalParticles);
             processed = end;
@@ -91,8 +95,8 @@ void Simulation::update(double deltaTime) {
         std::vector<Vec2> forces = physics.computeForces(particles, 0, static_cast<int>(totalParticles));
         for (size_t i = 0; i < totalParticles; ++i) {
             Particle &p = particles[i];
-            p.velocity.x += (forces[i].x / p.mass) * (float)deltaTime;
-            p.velocity.y += (forces[i].y / p.mass) * (float)deltaTime;
+            p.velocity.x += (forces[i].x * p.invMass) * (float)deltaTime;
+            p.velocity.y += (forces[i].y * p.invMass) * (float)deltaTime;
             p.position.x += p.velocity.x * (float)deltaTime;
             p.position.y += p.velocity.y * (float)deltaTime;
 

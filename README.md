@@ -1,4 +1,4 @@
-Particle Simulation
+Performant Computing Particle Simulation
 
 Multithreaded particle simulation written in C++ using SDL2. Simulates basic physics interactions between thousands of particles.
 

@@ -1,0 +1,1003 @@
+--- Start of Engine/particle.cpp ---
+#include "particle.h"
+#include <iostream>
+#include <algorithm>
+
+void Particle::update(const Vec2& force, float deltaTime) {
+    Vec2 acceleration = force * invMass;
+    velocity += acceleration * deltaTime; 
+    position += velocity * deltaTime;
+}
+
+void Particle::render(SDL_Renderer* renderer) {
+    if (renderer == nullptr) {
+        std::cerr << "Error: Renderer is null!" << std::endl;
+        return;
+    }
+
+    if (std::isnan(position.x) || std::isnan(position.y) || std::isnan(velocity.x) || std::isnan(velocity.y)) {
+        std::cerr << "Error: Invalid particle position or velocity!" << std::endl;
+        return;
+    }
+
+    float speed = std::sqrt(velocity.x * velocity.x + velocity.y * velocity.y);
+    SDL_Color blue = {40, 40, 255, 255};
+    SDL_Color orange = {200, 20, 20, 55};
+    float maxSpeed = 50.0f; 
+    float normSpeed = std::min(speed / maxSpeed, 1.0f);
+
+    SDL_Color color;
+    color.r = static_cast<Uint8>(blue.r + normSpeed * (orange.r - blue.r));
+    color.g = static_cast<Uint8>(blue.g + normSpeed * (orange.g - blue.g));
+    color.b = static_cast<Uint8>(blue.b + normSpeed * (orange.b - blue.b));
+    color.a = 255;
+
+    SDL_SetRenderDrawColor(renderer, color.r, color.g, color.b, 255);
+    drawCircle(renderer, static_cast<int>(position.x), static_cast<int>(position.y), static_cast<int>(radius));
+}
+
+void Particle::drawCircle(SDL_Renderer* renderer, int centerX, int centerY, int radius) {
+    for (int w = 0; w < radius * 2; w++) {
+        for (int h = 0; h < radius * 2; h++) {
+            int dx = radius - w;  
+            int dy = radius - h;  
+            if ((dx * dx + dy * dy) <= (radius * radius)) {
+                SDL_RenderDrawPoint(renderer, centerX + dx, centerY + dy);
+            }
+        }
+    }
+}
+--- End of Engine/particle.cpp ---
+
+--- Start of Engine/simulation.h ---
+#ifndef SIMULATION_H
+#define SIMULATION_H
+
+#include <vector>
+#include "particle.h"
+#include "physics.h"
+
+class Simulation {
+    PhysicsEngine physics;
+    std::vector<Particle> particles;
+    bool running;
+    std::chrono::steady_clock::time_point lastFrameTime;
+    int frameCount;
+    float frameRate;
+
+    
+    bool multithreadingEnabled;
+    bool gridEnabled;
+    bool reducedPairwiseComparisonsEnabled;
+
+public:
+    Simulation();
+    void start();
+    void stop();
+    void update(double deltaTime);
+    void calculateFrameRate();
+    float getFrameRate() const;
+    void render(SDL_Renderer* renderer);
+    void reset(int count);
+    void spawnParticlesAtMouse(int x, int y, int count);
+    Particle createParticleAtPosition(int x, int y);
+    Particle createRandomParticle();
+    int getParticleCount() const;
+    void toggleGravity();
+    void setParticle(int count);
+    float simulation_speed;
+    Vec2 getAverageVelocity() const;
+
+    
+    void toggleMultithreading() { multithreadingEnabled = !multithreadingEnabled; }
+    void toggleGrid() { gridEnabled = !gridEnabled; physics.setGridEnabled(gridEnabled); }
+    void toggleReducedPairwiseComparisons() { reducedPairwiseComparisonsEnabled = !reducedPairwiseComparisonsEnabled; physics.setReducedPairwiseComparisonsEnabled(reducedPairwiseComparisonsEnabled); }
+
+    
+    bool isMultithreadingEnabled() const { return multithreadingEnabled; }
+    bool isGridEnabled() const { return gridEnabled; }
+    bool isReducedPairwiseComparisonsEnabled() const { return reducedPairwiseComparisonsEnabled; }
+};
+
+#endif
+--- End of Engine/simulation.h ---
+
+--- Start of Engine/particle.h ---
+#ifndef PARTICLE_H
+#define PARTICLE_H
+
+#include <SDL.h>
+#include <cmath> 
+
+struct Vec2 {
+    float x, y;
+
+    Vec2(float x = 0, float y = 0) : x(x), y(y) {}
+
+    Vec2 operator+(const Vec2& other) const {
+        return {x + other.x, y + other.y};
+    }
+
+    Vec2 operator-(const Vec2& other) const {
+        return {x - other.x, y - other.y};
+    }
+
+    Vec2 operator*(float scalar) const {
+        return {x * scalar, y * scalar};
+    }
+    
+    Vec2 operator/(float scalar) const {
+        return {x / scalar, y / scalar};
+    }
+
+    Vec2& operator+=(const Vec2& other) {
+        x += other.x;
+        y += other.y;
+        return *this;
+    }
+
+    Vec2& operator-=(const Vec2& other) {
+        x -= other.x;
+        y -= other.y;
+        return *this;
+    }
+
+    float magnitude() const {
+        return std::sqrt(x * x + y * y);
+    }
+
+    Vec2 norm() const {
+        float mag = magnitude();
+        return mag > 0 ? *this * (1 / mag) : Vec2(); 
+    }
+
+    float dot(const Vec2& other) const {
+        return x * other.x + y * other.y;
+    }
+};
+
+class Particle {
+public:
+    Vec2 position, velocity;
+    SDL_Color color;
+    float radius, mass, invMass, dipoleMoment, exclusionConstant, repulsionFactor;
+    int type;
+    Particle(Vec2 pos, Vec2 vel, SDL_Color col, float r, float m, float dipole, float exclusion, float repulsion, int t)
+        : position(pos), velocity(vel), color(col), radius(r), mass(m), dipoleMoment(dipole), exclusionConstant(exclusion), repulsionFactor(repulsion), type(t)
+    {
+         invMass = (mass != 0.0f) ? 1.0f / mass : 0.0f;
+    }
+    void update(const Vec2& force, float deltaTime);
+    void render(SDL_Renderer* renderer);
+private:
+    static void drawCircle(SDL_Renderer* renderer, int centerX, int centerY, int radius);
+};
+
+#endif
+--- End of Engine/particle.h ---
+
+--- Start of Engine/physics.cpp ---
+#include "physics.h"
+#include <cmath>
+#include <vector>
+#include <algorithm>
+#include <cstdlib>
+
+void PhysicsState::updateState(const std::vector<Vec2>& forces, float deltaTime) {
+    for (size_t i = 0; i < particles.size(); ++i) {
+        particles[i].velocity.x += (forces[i].x / particles[i].mass) * deltaTime;
+        particles[i].velocity.y += (forces[i].y / particles[i].mass) * deltaTime;
+        
+        particles[i].position.x += particles[i].velocity.x * deltaTime;
+        particles[i].position.y += particles[i].velocity.y * deltaTime;
+    }
+}
+
+std::vector<Vec2> PhysicsEngine::computeForces(std::vector<Particle>& particles, int start, int end) {
+    std::vector<Vec2> forces(end - start, Vec2(0, 0));
+
+    if (gridEnabled) {
+        const float cellSize = 8.0f;
+        const int windowWidth = 1200;
+        const int windowHeight = 800;
+        const int gridWidth = static_cast<int>(std::ceil(windowWidth / cellSize));
+        const int gridHeight = static_cast<int>(std::ceil(windowHeight / cellSize));
+
+        std::vector<std::vector<int>> cells(gridWidth * gridHeight);
+        for (int i = start; i < end; ++i) {
+            int cellX = static_cast<int>(particles[i].position.x / cellSize);
+            int cellY = static_cast<int>(particles[i].position.y / cellSize);
+            if (cellX < 0) cellX = 0;
+            if (cellX >= gridWidth) cellX = gridWidth - 1;
+            if (cellY < 0) cellY = 0;
+            if (cellY >= gridHeight) cellY = gridHeight - 1;
+            cells[cellY * gridWidth + cellX].push_back(i);
+        }
+
+        const float repulsionStrength = 1.5f;
+
+        for (int i = start; i < end; ++i) {
+            Vec2 netForce(0, 0);
+            
+            if (gravityEnabled) {
+                netForce.y += particles[i].mass * gravity;
+            }
+            int cellX = static_cast<int>(particles[i].position.x / cellSize);
+            int cellY = static_cast<int>(particles[i].position.y / cellSize);
+            if (cellX < 0) cellX = 0;
+            if (cellX >= gridWidth) cellX = gridWidth - 1;
+            if (cellY < 0) cellY = 0;
+            if (cellY >= gridHeight) cellY = gridHeight - 1;
+
+            int neighborRange = reducedPairwiseComparisonsEnabled ? 1 : 2; 
+
+            for (int dx = -neighborRange; dx <= neighborRange; ++dx) {
+                for (int dy = -neighborRange; dy <= neighborRange; ++dy) {
+                    int nx = cellX + dx;
+                    int ny = cellY + dy;
+                    if (nx < 0 || nx >= gridWidth || ny < 0 || ny >= gridHeight) continue;
+
+                    const std::vector<int>& cellParticles = cells[ny * gridWidth + nx];
+                    for (int j : cellParticles) {
+                        if (j == i) continue;
+
+                        Vec2 direction = particles[j].position - particles[i].position;
+                        float distanceSq = direction.x * direction.x + direction.y * direction.y;
+                        float combinedRadius = particles[i].radius + particles[j].radius;
+                        float combinedRadiusSq = combinedRadius * combinedRadius;
+
+                        if (distanceSq < combinedRadiusSq && distanceSq > 0.0f) {
+                            float distance = std::sqrt(distanceSq);
+                            Vec2 normal = direction / distance;
+                            float overlap = combinedRadius - distance;
+                            
+                            Vec2 repulsionForce = normal * (repulsionStrength * overlap);
+
+                            netForce -= repulsionForce; 
+                            
+                            if (j >= start && j < end) {
+                                forces[j - start] += repulsionForce; 
+                            }
+                        }
+                    }
+                }
+            }
+            forces[i - start] = forces[i - start] + netForce;
+        }
+    } else {
+        const float repulsionStrength = 1.5f;
+
+        for (int i = start; i < end; ++i) {
+            Vec2 netForce(0, 0);
+            
+            if (gravityEnabled) {
+                netForce.y += particles[i].mass * gravity;
+            }
+
+            for (int j = 0; j < particles.size(); ++j) {
+                if (j == i) continue;
+
+                if (reducedPairwiseComparisonsEnabled && (j % 2 != 0)) {
+                    continue;
+                }
+
+                Vec2 direction = particles[j].position - particles[i].position;
+                float distanceSq = direction.x * direction.x + direction.y * direction.y;
+                float combinedRadius = particles[i].radius + particles[j].radius;
+                float combinedRadiusSq = combinedRadius * combinedRadius;
+
+                if (distanceSq < combinedRadiusSq && distanceSq > 0.0f) {
+                    float distance = std::sqrt(distanceSq);
+                    Vec2 normal = direction / distance;
+                    float overlap = combinedRadius - distance;
+                    
+                    Vec2 repulsionForce = normal * (repulsionStrength * overlap);
+
+                    netForce -= repulsionForce; 
+                    
+                    if (j >= start && j < end) {
+                        forces[j - start] += repulsionForce; 
+                    }
+                }
+            }
+            forces[i - start] = forces[i - start] + netForce;
+        }
+    }
+
+    return forces;
+}
+
+void PhysicsEngine::applyBoundaries(Particle& particle) {
+    const int windowWidth = 1200;
+    const int windowHeight = 800;
+    const float velocityLossFactor = 0.9f;
+
+    if (particle.position.x > windowWidth) {
+        particle.position.x = windowWidth; 
+        particle.velocity.x *= -velocityLossFactor;
+    }
+
+    if (particle.position.x < 0) {
+        particle.position.x = 0; 
+        particle.velocity.x *= -velocityLossFactor;
+    }
+
+    if (particle.position.y < 0) {
+        particle.position.y = 0; 
+        particle.velocity.y *= -velocityLossFactor;
+    }
+
+    if (particle.position.y > windowHeight) {
+        particle.position.y = windowHeight; 
+        particle.velocity.y *= -velocityLossFactor;
+    }
+}
+--- End of Engine/physics.cpp ---
+
+--- Start of Engine/simulation.cpp ---
+#include "simulation.h"
+#include <SDL.h>
+#include <cstdlib> 
+#include <cmath>   
+#include <ctime>   
+#include <vector>
+#include <thread>
+#include <future>
+#include <numeric>
+#include <random>
+#include <algorithm>
+#include <chrono>
+
+Simulation::Simulation() 
+    : running(false), 
+      frameCount(0), 
+      frameRate(0.0f),
+      multithreadingEnabled(true), 
+      gridEnabled(true),
+      reducedPairwiseComparisonsEnabled(true) 
+{
+    static std::mt19937 rng(static_cast<unsigned>(std::time(nullptr)));
+    lastFrameTime = std::chrono::steady_clock::now();
+    simulation_speed = 0.0016f;
+    physics.setGridEnabled(gridEnabled);
+    physics.setReducedPairwiseComparisonsEnabled(reducedPairwiseComparisonsEnabled);
+}
+
+void Simulation::start() {
+    running = true;
+}
+
+void Simulation::stop() {
+    running = false;
+}
+
+void Simulation::reset(int count) {
+    particles.clear();
+    particles.reserve(static_cast<size_t>(count));
+    for (int i = 0; i < count; ++i) {
+        particles.push_back(createRandomParticle());
+    }
+}
+
+void Simulation::update(double deltaTime) {
+    if (!running) return;
+
+    unsigned int numThreads = std::thread::hardware_concurrency();
+    if (numThreads == 0) {
+        numThreads = 4;
+    }
+    
+    const size_t totalParticles = particles.size();
+    if (totalParticles == 0) {
+        calculateFrameRate();
+        return;
+    }
+
+    if (multithreadingEnabled) {
+        const size_t chunkSize = (totalParticles + numThreads - 1) / numThreads;
+        std::vector<std::future<void>> futures;
+        futures.reserve(numThreads);
+
+        auto updateChunk = [this, deltaTime](size_t start, size_t end) {
+            if (end <= start) return;
+            std::vector<Vec2> forces = physics.computeForces(particles, static_cast<int>(start), static_cast<int>(end));
+            for (size_t i = start; i < end; ++i) {
+                Particle &p = particles[i];
+                p.velocity.x += (forces[i - start].x * p.invMass) * (float)deltaTime;
+                p.velocity.y += (forces[i - start].y * p.invMass) * (float)deltaTime;
+                p.position.x += p.velocity.x * (float)deltaTime;
+                p.position.y += p.velocity.y * (float)deltaTime;
+
+                physics.applyBoundaries(p);
+            }
+        };
+
+        size_t processed = 0;
+        for (unsigned int i = 0; i < numThreads; ++i) {
+            const size_t start = processed;
+            const size_t end = std::min(start + chunkSize, totalParticles);
+            processed = end;
+            if (start < end) {
+                futures.push_back(std::async(std::launch::async, updateChunk, start, end));
+            } else {
+                break;
+            }
+        }
+
+        for (auto& future : futures) {
+            future.get();
+        }
+    } else {
+        
+        std::vector<Vec2> forces = physics.computeForces(particles, 0, static_cast<int>(totalParticles));
+        for (size_t i = 0; i < totalParticles; ++i) {
+            Particle &p = particles[i];
+            p.velocity.x += (forces[i].x * p.invMass) * (float)deltaTime;
+            p.velocity.y += (forces[i].y * p.invMass) * (float)deltaTime;
+            p.position.x += p.velocity.x * (float)deltaTime;
+            p.position.y += p.velocity.y * (float)deltaTime;
+
+            physics.applyBoundaries(p);
+        }
+    }
+
+    calculateFrameRate();
+
+    auto currentTime = std::chrono::steady_clock::now();
+    auto frameDuration = std::chrono::duration_cast<std::chrono::milliseconds>(
+        currentTime - lastFrameTime
+    );
+
+    constexpr int targetFrameDuration = 16;
+    if (frameDuration.count() < targetFrameDuration) {
+        std::this_thread::sleep_for(
+            std::chrono::milliseconds(targetFrameDuration - frameDuration.count())
+        );
+    }
+
+    lastFrameTime = std::chrono::steady_clock::now();
+}
+
+void Simulation::render(SDL_Renderer* renderer) {
+    for (Particle &p : particles) {
+        p.render(renderer);
+    }
+}
+
+Vec2 Simulation::getAverageVelocity() const {
+    size_t n = particles.size();
+    if (n == 0) {
+        return Vec2(0.0f, 0.0f);
+    }
+
+    Vec2 sumVelocity(0.0f, 0.0f);
+    for (const Particle &p : particles) {
+        sumVelocity.x += p.velocity.x;
+        sumVelocity.y += p.velocity.y;
+    }
+
+    sumVelocity.x /= static_cast<float>(n);
+    sumVelocity.y /= static_cast<float>(n);
+
+    return sumVelocity;
+}
+
+Particle Simulation::createRandomParticle() {
+    static thread_local std::mt19937 rng(static_cast<unsigned>(std::time(nullptr)) ^ 
+                                         static_cast<unsigned>(std::hash<std::thread::id>{}(std::this_thread::get_id())));
+    static std::uniform_real_distribution<float> distX(0.0f, 1200.0f);
+    static std::uniform_real_distribution<float> distY(0.0f, 800.0f);
+    static std::uniform_real_distribution<float> distAngle(0.0f, 2.0f * (float)M_PI);
+    static std::uniform_real_distribution<float> distSpeed(0.0f, 50.0f);
+    static std::uniform_int_distribution<int> distColor(0, 255);
+
+    float x = distX(rng);
+    float y = distY(rng);
+    Vec2 pos(x, y);
+
+    float angle = distAngle(rng);
+    float speed = distSpeed(rng);
+    Vec2 vel(std::cos(angle) * speed, std::sin(angle) * speed);
+
+    SDL_Color color = {
+        static_cast<Uint8>(distColor(rng)),
+        static_cast<Uint8>(distColor(rng)),
+        static_cast<Uint8>(distColor(rng)),
+        255
+    };
+    float radius = 2.0f;
+    float mass = radius / 5.0f;
+
+    return Particle(pos, vel, color, radius, mass, 0.0f, 0.0f, 1.0f, 0);
+}
+
+void Simulation::toggleGravity() {
+    physics.toggleGravity();
+}
+
+void Simulation::setParticle(int count) {
+    if (count < 0 || count > 9999) {
+        return;
+    }
+    int currentCount = (int)particles.size();
+    if (count > currentCount) {
+        particles.reserve((size_t)count);
+        for (int i = currentCount; i < count; ++i) {
+            particles.push_back(createRandomParticle());
+        }
+    } else {
+        particles.erase(particles.begin() + count, particles.end());
+    }
+}
+
+void Simulation::calculateFrameRate() {
+    static std::chrono::steady_clock::time_point frameRateStartTime = std::chrono::steady_clock::now();
+    frameCount++;
+
+    auto currentTime = std::chrono::steady_clock::now();
+    double secondsPassed = std::chrono::duration_cast<std::chrono::duration<double>>(currentTime - frameRateStartTime).count();
+
+    if (secondsPassed >= 1.0) {
+        frameRate = frameCount / (float)secondsPassed;
+        frameCount = 0;
+        frameRateStartTime = currentTime;
+    }
+}
+
+void Simulation::spawnParticlesAtMouse(int x, int y, int count) {
+    particles.reserve(particles.size() + (size_t)count);
+    for (int i = 0; i < count; ++i) {
+        particles.push_back(createParticleAtPosition(x, y));
+    }
+}
+
+Particle Simulation::createParticleAtPosition(int x, int y) {
+    static thread_local std::mt19937 rng(static_cast<unsigned>(std::time(nullptr)) ^
+                                         static_cast<unsigned>(std::hash<std::thread::id>{}(std::this_thread::get_id())));
+    static std::uniform_real_distribution<float> distAngle(0.0f, 2.0f * (float)M_PI);
+    static std::uniform_real_distribution<float> distSpeed(0.0f, 10.0f);
+    static std::uniform_int_distribution<int> distColor(0, 255);
+
+    Vec2 pos(static_cast<float>(x), static_cast<float>(y));
+    float angle = distAngle(rng);
+    float speed = distSpeed(rng);
+
+    Vec2 vel(std::cos(angle) * speed, std::sin(angle) * speed);
+
+    SDL_Color color = {
+        static_cast<Uint8>(distColor(rng)),
+        static_cast<Uint8>(distColor(rng)),
+        static_cast<Uint8>(distColor(rng)),
+        255
+    };
+
+    float radius = 2.0f;
+    float mass = radius / 2.0f; 
+    float dipoleMoment = 0.0f;
+    float exclusionConstant = 0.0f;
+    float repulsionFactor = 1.0f;
+    int type = 0;
+
+    return Particle(pos, vel, color, radius, mass, dipoleMoment, exclusionConstant, repulsionFactor, type);
+}
+
+float Simulation::getFrameRate() const {
+    return frameRate;
+}
+
+int Simulation::getParticleCount() const {
+    return (int)particles.size();
+}
+--- End of Engine/simulation.cpp ---
+
+--- Start of Engine/physics.h ---
+#ifndef PHYSICS_H
+#define PHYSICS_H
+
+#include "particle.h"
+#include <vector>
+#include <cmath>
+#include <unordered_map> 
+
+struct PhysicsState {
+    std::vector<Particle> particles;
+    void updateState(const std::vector<Vec2>& forces, float deltaTime);
+};
+
+class PhysicsEngine {
+    bool gravityEnabled = true;
+
+    
+    bool gridEnabled = true;
+    bool reducedPairwiseComparisonsEnabled = true;
+
+public:
+    float gravity = 9.81;
+    void toggleGravity() { gravityEnabled = !gravityEnabled; }
+    
+    
+    void setGridEnabled(bool enabled) { gridEnabled = enabled; }
+    void setReducedPairwiseComparisonsEnabled(bool enabled) { reducedPairwiseComparisonsEnabled = enabled; }
+
+    std::vector<Vec2> computeForces(std::vector<Particle>& particles, int start, int end);
+    void applyBoundaries(Particle& particle);
+};
+
+#endif 
+--- End of Engine/physics.h ---
+
+--- Start of UI/.DS_Store ---
+Error reading UI/.DS_Store: 'utf-8' codec can't decode byte 0x80 in position 3131: invalid start byte
+
+--- End of UI/.DS_Store ---
+
+--- Start of UI/gui.h ---
+#ifndef UI_H
+#define UI_H
+
+#include <SDL.h>
+#include <SDL_ttf.h>
+#include "simulation.h"
+#include <string>
+#include <vector>
+
+class GUI {
+public:
+    GUI(SDL_Renderer* renderer, TTF_Font* font);
+    ~GUI();
+    void render(Simulation& simulation);
+    void handleEvent(SDL_Event& event, Simulation& simulation);
+    void updateMetricsDisplay(const Simulation& simulation);
+    void initTexture(SDL_Texture** texture, const char* text, SDL_Color color);
+
+private:
+    SDL_Renderer* renderer;
+    TTF_Font* font;
+
+    SDL_Texture* startTexture;
+    SDL_Texture* stopTexture;
+    SDL_Texture* resetTexture;
+    SDL_Texture* gravityTexture;
+    SDL_Texture* multithreadingTexture; 
+    SDL_Texture* gridTexture;             
+    SDL_Texture* reducedPairwiseTexture;  
+    SDL_Texture* particleCountTexture;
+    SDL_Texture* frameRateTexture;
+    SDL_Texture* particleCountInputTexture;
+
+    SDL_Rect startButton;
+    SDL_Rect stopButton;
+    SDL_Rect resetButton;
+    SDL_Rect gravityButton;
+    SDL_Rect multithreadingButton; 
+    SDL_Rect gridButton;            
+    SDL_Rect reducedPairwiseButton; 
+    SDL_Rect particleCountRect;
+    SDL_Rect frameRateRect;
+    SDL_Rect particleCountInputRect;
+
+    std::string particleCountInput;
+    bool inputActive;
+
+    std::vector<float> fpsHistory;
+    std::vector<float> particleCountHistory;
+    std::vector<float> averageVelocityHistory; 
+    size_t maxGraphSamples;
+    size_t currentSampleIndex;
+
+    bool pointInRect(int x, int y, const SDL_Rect& rect);
+    void renderButton(const SDL_Rect& rect, SDL_Texture* texture, const std::string& label, bool toggled = false);
+
+    void renderGraph(const SDL_Rect& graphRect, const std::vector<float>& fpsData, const std::vector<float>& particleData, const std::string& title);
+    void drawLineGraph(const std::vector<float>& data, const SDL_Rect& graphRect, float maxVal, const SDL_Color& lineColor, int currentIndex);
+    
+    void renderAverageVelocityGraph(const SDL_Rect& graphRect, const std::vector<float>& avgVelData, const std::string& title);
+};
+
+#endif
+--- End of UI/gui.h ---
+
+--- Start of UI/gui.cpp ---
+#include "gui.h"
+#include "simulation.h"
+#include <SDL_ttf.h>
+#include <string>
+#include <algorithm>
+#include <cmath>
+
+struct GUIStyle {
+    SDL_Color backgroundColor = {34, 34, 34, 255};
+    SDL_Color panelColor = {44, 44, 44, 255};
+    SDL_Color buttonColor = {64, 64, 64, 255};
+    SDL_Color buttonHoverColor = {80, 80, 80, 255};
+    SDL_Color textColor = {220, 220, 220, 255};
+    SDL_Color inputActiveColor = {60, 60, 60, 255};
+    SDL_Color borderColor = {100, 100, 100, 255};
+
+    SDL_Color graphBackground = {0, 0, 0, 255};    
+    SDL_Color graphLineColor = {0, 180, 0, 255};
+    SDL_Color graphAxisColor = {160, 160, 160, 255}; 
+};
+
+static void drawRect(SDL_Renderer* renderer, const SDL_Rect& rect, const SDL_Color& color, bool filled = true) {
+    SDL_SetRenderDrawColor(renderer, color.r, color.g, color.b, color.a);
+    if (filled)
+        SDL_RenderFillRect(renderer, &rect);
+    else
+        SDL_RenderDrawRect(renderer, &rect);
+}
+
+GUI::GUI(SDL_Renderer* renderer, TTF_Font* font) 
+    : renderer(renderer), font(font), inputActive(false), particleCountInput("100") 
+{
+    
+    startButton =  {10,  50, 80, 40};
+    stopButton =   {110, 50, 80, 40};
+    resetButton =  {10,  100,80, 40};
+    gravityButton= {110, 100,80, 40};
+
+    
+    multithreadingButton = {10,  150, 180, 40};
+    gridButton =            {10,  200, 180, 40};
+    reducedPairwiseButton = {10,  250, 180, 40};
+
+    
+    particleCountRect =    {10, 10, 180, 30};
+    frameRateRect =        {200, 10, 180, 30};
+    
+    particleCountInputRect = {10, 310, 180, 40};
+
+    
+    startTexture = nullptr;
+    stopTexture = nullptr;
+    resetTexture = nullptr;
+    gravityTexture = nullptr;
+    multithreadingTexture = nullptr; 
+    gridTexture = nullptr;            
+    reducedPairwiseTexture = nullptr; 
+    particleCountTexture = nullptr;
+    frameRateTexture = nullptr;
+    particleCountInputTexture = nullptr;
+
+    GUIStyle style;
+    initTexture(&startTexture, "Start", style.textColor);
+    initTexture(&stopTexture, "Stop", style.textColor);
+    initTexture(&resetTexture, "Reset", style.textColor);
+    initTexture(&gravityTexture, "Toggle Gravity", style.textColor);
+    initTexture(&multithreadingTexture, "Toggle Multithreading", style.textColor); 
+    initTexture(&gridTexture, "Toggle Grid", style.textColor);                     
+    initTexture(&reducedPairwiseTexture, "Toggle Pairwise", style.textColor);      
+
+    maxGraphSamples = 60;
+    fpsHistory.resize(maxGraphSamples, 0.0f);
+    particleCountHistory.resize(maxGraphSamples, 0.0f);
+    averageVelocityHistory.resize(maxGraphSamples, 0.0f);
+    currentSampleIndex = 0;
+}
+
+GUI::~GUI() {
+    SDL_DestroyTexture(startTexture);
+    SDL_DestroyTexture(stopTexture);
+    SDL_DestroyTexture(resetTexture);
+    SDL_DestroyTexture(gravityTexture);
+    SDL_DestroyTexture(multithreadingTexture); 
+    SDL_DestroyTexture(gridTexture);            
+    SDL_DestroyTexture(reducedPairwiseTexture); 
+    if (particleCountTexture) SDL_DestroyTexture(particleCountTexture);
+    if (frameRateTexture) SDL_DestroyTexture(frameRateTexture);
+    if (particleCountInputTexture) SDL_DestroyTexture(particleCountInputTexture);
+}
+
+void GUI::render(Simulation& simulation) {
+    updateMetricsDisplay(simulation);
+
+    GUIStyle style;
+
+    
+    SDL_Rect panelRect = {0, 0, 400, 800};
+    drawRect(renderer, panelRect, style.panelColor);
+
+    
+    renderButton(startButton, startTexture, "Start");
+    renderButton(stopButton, stopTexture, "Stop");
+    renderButton(resetButton, resetTexture, "Reset");
+    renderButton(gravityButton, gravityTexture, "Toggle Gravity");
+
+    
+    std::string mtLabel = simulation.isMultithreadingEnabled() ? "Multithreading: ON" : "Multithreading: OFF";
+    initTexture(&multithreadingTexture, mtLabel.c_str(), style.textColor);
+    renderButton(multithreadingButton, multithreadingTexture, mtLabel);
+
+    std::string gridLabel = simulation.isGridEnabled() ? "Grid: ON" : "Grid: OFF";
+    initTexture(&gridTexture, gridLabel.c_str(), style.textColor);
+    renderButton(gridButton, gridTexture, gridLabel);
+
+    std::string pairwiseLabel = simulation.isReducedPairwiseComparisonsEnabled() ? "Pairwise: ON" : "Pairwise: OFF";
+    initTexture(&reducedPairwiseTexture, pairwiseLabel.c_str(), style.textColor);
+    renderButton(reducedPairwiseButton, reducedPairwiseTexture, pairwiseLabel);
+
+    
+    if (particleCountTexture) {
+        SDL_RenderCopy(renderer, particleCountTexture, NULL, &particleCountRect);
+    }
+    if (frameRateTexture) {
+        SDL_Rect fpsBg = frameRateRect;
+        fpsBg.x -= 5; fpsBg.y -= 5; fpsBg.w += 10; fpsBg.h += 10;
+        drawRect(renderer, fpsBg, {50, 50, 50, 255});
+        SDL_RenderCopy(renderer, frameRateTexture, NULL, &frameRateRect);
+    }
+
+    
+    SDL_Color inputColor = inputActive ? style.inputActiveColor : style.backgroundColor;
+    drawRect(renderer, particleCountInputRect, inputColor);
+    initTexture(&particleCountInputTexture, particleCountInput.c_str(), style.textColor);
+    {
+        SDL_Rect destRect = particleCountInputRect;
+        destRect.x += 5;
+        destRect.w -= 10;
+        SDL_RenderCopy(renderer, particleCountInputTexture, NULL, &destRect);
+    }
+
+    
+    SDL_Rect graphRect = {10, 360, 380, 150};
+    renderGraph(graphRect, fpsHistory, particleCountHistory, "");
+
+    SDL_Rect avgVelGraphRect = {10, 530, 380, 150};
+    renderAverageVelocityGraph(avgVelGraphRect, averageVelocityHistory, "");
+}
+
+void GUI::updateMetricsDisplay(const Simulation& simulation) {
+    fpsHistory[currentSampleIndex] = simulation.getFrameRate();
+    particleCountHistory[currentSampleIndex] = (float)simulation.getParticleCount();
+
+    Vec2 avgVel = simulation.getAverageVelocity();
+    float avgVelMagnitude = std::sqrt(avgVel.x * avgVel.x + avgVel.y * avgVel.y);
+    averageVelocityHistory[currentSampleIndex] = avgVelMagnitude;
+
+    currentSampleIndex = (currentSampleIndex + 1) % maxGraphSamples;
+
+    GUIStyle style;
+    std::string particleCountText = "Particles: " + std::to_string(simulation.getParticleCount());
+    std::string frameRateText = "FPS: " + std::to_string((int)std::round(simulation.getFrameRate()));
+
+    initTexture(&particleCountTexture, particleCountText.c_str(), style.textColor);
+    initTexture(&frameRateTexture, frameRateText.c_str(), {0, 255, 0, 255}); 
+}
+
+void GUI::initTexture(SDL_Texture** texture, const char* text, SDL_Color color) {
+    if (*texture) {
+        SDL_DestroyTexture(*texture);
+        *texture = nullptr;
+    }
+    SDL_Surface* surface = TTF_RenderText_Blended(font, text, color);
+    *texture = SDL_CreateTextureFromSurface(renderer, surface);
+    SDL_FreeSurface(surface);
+}
+
+void GUI::handleEvent(SDL_Event& event, Simulation& simulation) {
+    if (event.type == SDL_MOUSEBUTTONDOWN) {
+        int x, y;
+        SDL_GetMouseState(&x, &y);
+
+        if (pointInRect(x, y, startButton)) {
+            simulation.start();
+        } else if (pointInRect(x, y, stopButton)) {
+            simulation.stop();
+        } else if (pointInRect(x, y, resetButton)) {
+            int newParticleCountReset = std::stoi(particleCountInput.empty() ? "0" : particleCountInput);
+            simulation.reset(newParticleCountReset);
+        } else if (pointInRect(x, y, gravityButton)) {
+            simulation.toggleGravity();
+        } else if (pointInRect(x, y, multithreadingButton)) { 
+            simulation.toggleMultithreading();
+        } else if (pointInRect(x, y, gridButton)) { 
+            simulation.toggleGrid();
+        } else if (pointInRect(x, y, reducedPairwiseButton)) { 
+            simulation.toggleReducedPairwiseComparisons();
+        }
+
+        if (pointInRect(x, y, particleCountInputRect)) {
+            inputActive = true;
+        } else {
+            inputActive = false;
+        }
+
+    } else if (event.type == SDL_TEXTINPUT && inputActive) {
+        particleCountInput += event.text.text;
+
+    } else if (event.type == SDL_KEYDOWN && inputActive) {
+        if (event.key.keysym.sym == SDLK_BACKSPACE && !particleCountInput.empty()) {
+            particleCountInput.pop_back();
+        }
+        if (event.key.keysym.sym == SDLK_RETURN) {
+            try {
+                int newParticleCount = std::stoi(particleCountInput.empty() ? "0" : particleCountInput);
+                simulation.setParticle(newParticleCount); 
+            } catch (const std::invalid_argument&) {
+                particleCountInput = "0";
+            }
+            inputActive = false;
+        }
+    }
+}
+
+bool GUI::pointInRect(int x, int y, const SDL_Rect& rect) {
+    return (x >= rect.x && x <= rect.x + rect.w &&
+            y >= rect.y && y <= rect.y + rect.h);
+}
+
+void GUI::renderButton(const SDL_Rect& rect, SDL_Texture* texture, const std::string& label, bool toggled) {
+    GUIStyle style;
+    int mouseX, mouseY;
+    SDL_GetMouseState(&mouseX, &mouseY);
+    bool hovered = pointInRect(mouseX, mouseY, rect);
+
+    SDL_Color bgColor = hovered ? style.buttonHoverColor : style.buttonColor;
+    if (toggled) {
+        bgColor = {100, 180, 100, 255}; 
+    }
+    drawRect(renderer, rect, bgColor);
+    if (texture) {
+        SDL_RenderCopy(renderer, texture, NULL, &rect);
+    } else {
+        SDL_Texture* tempTex = nullptr;
+        initTexture(&tempTex, label.c_str(), style.textColor);
+        SDL_RenderCopy(renderer, tempTex, NULL, &rect);
+        SDL_DestroyTexture(tempTex);
+    }
+}
+
+void GUI::renderGraph(const SDL_Rect& graphRect, const std::vector<float>& fpsData, const std::vector<float>& particleData, const std::string& title) {
+    GUIStyle style;
+    drawRect(renderer, graphRect, style.graphBackground);
+
+    float maxFPS = *std::max_element(fpsData.begin(), fpsData.end());
+    float maxParticles = *std::max_element(particleData.begin(), particleData.end());
+    float globalMax = std::max(maxFPS, maxParticles);
+    if (globalMax < 1.0f) globalMax = 1.0f;
+
+    
+    drawLineGraph(fpsData, graphRect, globalMax, style.graphLineColor, currentSampleIndex);
+
+    SDL_Color particleLineColor = {220, 0, 0, 255};
+    drawLineGraph(particleData, graphRect, globalMax, particleLineColor, currentSampleIndex);
+}
+
+void GUI::renderAverageVelocityGraph(const SDL_Rect& graphRect, const std::vector<float>& avgVelData, const std::string& title) {
+    GUIStyle style;
+    drawRect(renderer, graphRect, style.graphBackground);
+
+    float maxVel = *std::max_element(avgVelData.begin(), avgVelData.end());
+    if (maxVel < 1.0f) maxVel = 1.0f;
+
+    
+    SDL_Color velLineColor = {0, 0, 220, 255};
+    drawLineGraph(avgVelData, graphRect, maxVel, velLineColor, currentSampleIndex);
+}
+
+void GUI::drawLineGraph(const std::vector<float>& data, const SDL_Rect& graphRect, float maxVal, const SDL_Color& lineColor, int currentIndex) {
+    int count = (int)data.size();
+    if (count < 2) return;
+
+    float width = (float)graphRect.w;
+    float height = (float)graphRect.h;
+
+    SDL_SetRenderDrawColor(renderer, lineColor.r, lineColor.g, lineColor.b, lineColor.a);
+
+    for (int i = 0; i < count - 1; i++) {
+        int idx1 = (currentSampleIndex + i) % count;
+        int idx2 = (currentSampleIndex + i + 1) % count;
+
+        float val1 = data[idx1];
+        float val2 = data[idx2];
+
+        float x1 = graphRect.x + (width * i / (count - 1));
+        float y1 = graphRect.y + (height - (val1 / maxVal) * height);
+        float x2 = graphRect.x + (width * (i+1) / (count - 1));
+        float y2 = graphRect.y + (height - (val2 / maxVal) * height);
+
+        SDL_RenderDrawLine(renderer, (int)x1, (int)y1, (int)x2, (int)y2);
+    }
+}
+--- End of UI/gui.cpp ---
+

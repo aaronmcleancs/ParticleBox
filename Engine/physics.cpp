@@ -26,8 +26,9 @@ std::vector<Vec2> PhysicsEngine::computeForces(std::vector<Particle>& particles,
 
         std::vector<std::vector<int>> cells(gridWidth * gridHeight);
         for (int i = start; i < end; ++i) {
-            int cellX = static_cast<int>(particles[i].position.x / cellSize);
-            int cellY = static_cast<int>(particles[i].position.y / cellSize);
+            // Use bit shifting if positions are positive and cellSize is a power-of-two (8 = 2^3)
+            int cellX = static_cast<int>(particles[i].position.x) >> 3;
+            int cellY = static_cast<int>(particles[i].position.y) >> 3;
             if (cellX < 0) cellX = 0;
             if (cellX >= gridWidth) cellX = gridWidth - 1;
             if (cellY < 0) cellY = 0;
@@ -39,12 +40,11 @@ std::vector<Vec2> PhysicsEngine::computeForces(std::vector<Particle>& particles,
 
         for (int i = start; i < end; ++i) {
             Vec2 netForce(0, 0);
-            
             if (gravityEnabled) {
                 netForce.y += particles[i].mass * gravity;
             }
-            int cellX = static_cast<int>(particles[i].position.x / cellSize);
-            int cellY = static_cast<int>(particles[i].position.y / cellSize);
+            int cellX = static_cast<int>(particles[i].position.x) >> 3;
+            int cellY = static_cast<int>(particles[i].position.y) >> 3;
             if (cellX < 0) cellX = 0;
             if (cellX >= gridWidth) cellX = gridWidth - 1;
             if (cellY < 0) cellY = 0;
@@ -57,27 +57,21 @@ std::vector<Vec2> PhysicsEngine::computeForces(std::vector<Particle>& particles,
                     int nx = cellX + dx;
                     int ny = cellY + dy;
                     if (nx < 0 || nx >= gridWidth || ny < 0 || ny >= gridHeight) continue;
-
                     const std::vector<int>& cellParticles = cells[ny * gridWidth + nx];
                     for (int j : cellParticles) {
                         if (j == i) continue;
-
                         Vec2 direction = particles[j].position - particles[i].position;
                         float distanceSq = direction.x * direction.x + direction.y * direction.y;
                         float combinedRadius = particles[i].radius + particles[j].radius;
                         float combinedRadiusSq = combinedRadius * combinedRadius;
-
                         if (distanceSq < combinedRadiusSq && distanceSq > 0.0f) {
                             float distance = std::sqrt(distanceSq);
                             Vec2 normal = direction / distance;
                             float overlap = combinedRadius - distance;
-                            
                             Vec2 repulsionForce = normal * (repulsionStrength * overlap);
-
-                            netForce -= repulsionForce; 
-                            
+                            netForce -= repulsionForce;
                             if (j >= start && j < end) {
-                                forces[j - start] += repulsionForce; 
+                                forces[j - start] += repulsionForce;
                             }
                         }
                     }
@@ -86,45 +80,36 @@ std::vector<Vec2> PhysicsEngine::computeForces(std::vector<Particle>& particles,
             forces[i - start] = forces[i - start] + netForce;
         }
     } else {
+        // Fallback to non-grid based computation remains unchanged
         const float repulsionStrength = 1.5f;
-
         for (int i = start; i < end; ++i) {
             Vec2 netForce(0, 0);
-            
             if (gravityEnabled) {
                 netForce.y += particles[i].mass * gravity;
             }
-
             for (int j = 0; j < particles.size(); ++j) {
                 if (j == i) continue;
-
                 if (reducedPairwiseComparisonsEnabled && (j % 2 != 0)) {
                     continue;
                 }
-
                 Vec2 direction = particles[j].position - particles[i].position;
                 float distanceSq = direction.x * direction.x + direction.y * direction.y;
                 float combinedRadius = particles[i].radius + particles[j].radius;
                 float combinedRadiusSq = combinedRadius * combinedRadius;
-
                 if (distanceSq < combinedRadiusSq && distanceSq > 0.0f) {
                     float distance = std::sqrt(distanceSq);
                     Vec2 normal = direction / distance;
                     float overlap = combinedRadius - distance;
-                    
                     Vec2 repulsionForce = normal * (repulsionStrength * overlap);
-
-                    netForce -= repulsionForce; 
-                    
+                    netForce -= repulsionForce;
                     if (j >= start && j < end) {
-                        forces[j - start] += repulsionForce; 
+                        forces[j - start] += repulsionForce;
                     }
                 }
             }
             forces[i - start] = forces[i - start] + netForce;
         }
     }
-
     return forces;
 }
 

@@ -1,51 +1,87 @@
 --- Start of Engine/particle.cpp ---
 #include "particle.h"
-#include <iostream>
-#include <algorithm>
+#include <SDL.h>
+#include <SDL_render.h>
+#include <cmath>
+#include <unordered_map>
+
+SDL_Texture* createCircleTexture(SDL_Renderer* renderer, int radius) {
+    int diameter = radius * 2;
+    SDL_Texture* texture = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_RGBA8888, SDL_TEXTUREACCESS_TARGET, diameter, diameter);
+    SDL_SetTextureBlendMode(texture, SDL_BLENDMODE_BLEND);
+    
+    SDL_SetRenderTarget(renderer, texture);
+    SDL_SetRenderDrawColor(renderer, 0, 0, 0, 0);
+    SDL_RenderClear(renderer);
+    SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255);
+
+    int cx = radius;
+    int cy = radius;
+    int x = 0;
+    int y = radius;
+    int d = 3 - 2 * radius;
+    while (x <= y) {
+        SDL_RenderDrawLine(renderer, cx - y, cy - x, cx + y, cy - x);
+        SDL_RenderDrawLine(renderer, cx - x, cy - y, cx + x, cy - y);
+        SDL_RenderDrawLine(renderer, cx - x, cy + y, cx + x, cy + y);
+        SDL_RenderDrawLine(renderer, cx - y, cy + x, cx + y, cy + x);
+        if (d < 0) {
+            d = d + 4 * x + 6;
+        } else {
+            d = d + 4 * (x - y) + 10;
+            y--;
+        }
+        x++;
+    }
+
+    SDL_SetRenderTarget(renderer, nullptr);
+    return texture;
+}
+
+static std::unordered_map<int, SDL_Texture*> circleTextureCache;
 
 void Particle::update(const Vec2& force, float deltaTime) {
     Vec2 acceleration = force * invMass;
-    velocity += acceleration * deltaTime; 
+    velocity += acceleration * deltaTime;
     position += velocity * deltaTime;
 }
 
 void Particle::render(SDL_Renderer* renderer) {
     if (renderer == nullptr) {
-        std::cerr << "Error: Renderer is null!" << std::endl;
         return;
     }
-
-    if (std::isnan(position.x) || std::isnan(position.y) || std::isnan(velocity.x) || std::isnan(velocity.y)) {
-        std::cerr << "Error: Invalid particle position or velocity!" << std::endl;
+    if (std::isnan(position.x) || std::isnan(position.y) ||
+        std::isnan(velocity.x) || std::isnan(velocity.y)) {
         return;
     }
 
     float speed = std::sqrt(velocity.x * velocity.x + velocity.y * velocity.y);
     SDL_Color blue = {40, 40, 255, 255};
-    SDL_Color orange = {200, 20, 20, 55};
-    float maxSpeed = 50.0f; 
+    SDL_Color orange = {200, 20, 20, 255};
+    float maxSpeed = 50.0f;
     float normSpeed = std::min(speed / maxSpeed, 1.0f);
 
-    SDL_Color color;
-    color.r = static_cast<Uint8>(blue.r + normSpeed * (orange.r - blue.r));
-    color.g = static_cast<Uint8>(blue.g + normSpeed * (orange.g - blue.g));
-    color.b = static_cast<Uint8>(blue.b + normSpeed * (orange.b - blue.b));
-    color.a = 255;
+    SDL_Color finalColor;
+    finalColor.r = static_cast<Uint8>(blue.r + normSpeed * (orange.r - blue.r));
+    finalColor.g = static_cast<Uint8>(blue.g + normSpeed * (orange.g - blue.g));
+    finalColor.b = static_cast<Uint8>(blue.b + normSpeed * (orange.b - blue.b));
+    finalColor.a = 255;
 
-    SDL_SetRenderDrawColor(renderer, color.r, color.g, color.b, 255);
-    drawCircle(renderer, static_cast<int>(position.x), static_cast<int>(position.y), static_cast<int>(radius));
-}
-
-void Particle::drawCircle(SDL_Renderer* renderer, int centerX, int centerY, int radius) {
-    for (int w = 0; w < radius * 2; w++) {
-        for (int h = 0; h < radius * 2; h++) {
-            int dx = radius - w;  
-            int dy = radius - h;  
-            if ((dx * dx + dy * dy) <= (radius * radius)) {
-                SDL_RenderDrawPoint(renderer, centerX + dx, centerY + dy);
-            }
-        }
+    int rad = static_cast<int>(radius);
+    if (circleTextureCache.find(rad) == circleTextureCache.end()) {
+        circleTextureCache[rad] = createCircleTexture(renderer, rad);
     }
+    SDL_Texture* circleTexture = circleTextureCache[rad];
+
+    SDL_SetTextureColorMod(circleTexture, finalColor.r, finalColor.g, finalColor.b);
+
+    SDL_Rect dstRect = {
+        static_cast<int>(position.x - radius),
+        static_cast<int>(position.y - radius),
+        rad * 2,
+        rad * 2
+    };
+    SDL_RenderCopy(renderer, circleTexture, nullptr, &dstRect);
 }
 --- End of Engine/particle.cpp ---
 
@@ -101,6 +137,39 @@ public:
 
 #endif
 --- End of Engine/simulation.h ---
+
+--- Start of Engine/simulation_flags.h ---
+#ifndef SIMULATION_FLAGS_H
+#define SIMULATION_FLAGS_H
+
+enum SimulationFlags {
+    SIM_FLAG_NONE                   = 0,
+    SIM_FLAG_MULTITHREADING_ENABLED = 1 << 0,
+    SIM_FLAG_GRID_ENABLED           = 1 << 1,
+    SIM_FLAG_REDUCED_PAIRWISE       = 1 << 2,
+    SIM_FLAG_GRAVITY_ENABLED        = 1 << 3
+};
+
+inline SimulationFlags operator|(SimulationFlags a, SimulationFlags b) {
+    return static_cast<SimulationFlags>(static_cast<int>(a) | static_cast<int>(b));
+}
+
+inline SimulationFlags operator&(SimulationFlags a, SimulationFlags b) {
+    return static_cast<SimulationFlags>(static_cast<int>(a) & static_cast<int>(b));
+}
+
+inline SimulationFlags& operator|=(SimulationFlags &a, SimulationFlags b) {
+    a = a | b;
+    return a;
+}
+
+inline SimulationFlags& operator&=(SimulationFlags &a, SimulationFlags b) {
+    a = a & b;
+    return a;
+}
+
+#endif
+--- End of Engine/simulation_flags.h ---
 
 --- Start of Engine/particle.h ---
 #ifndef PARTICLE_H
@@ -205,8 +274,9 @@ std::vector<Vec2> PhysicsEngine::computeForces(std::vector<Particle>& particles,
 
         std::vector<std::vector<int>> cells(gridWidth * gridHeight);
         for (int i = start; i < end; ++i) {
-            int cellX = static_cast<int>(particles[i].position.x / cellSize);
-            int cellY = static_cast<int>(particles[i].position.y / cellSize);
+            // Use bit shifting if positions are positive and cellSize is a power-of-two (8 = 2^3)
+            int cellX = static_cast<int>(particles[i].position.x) >> 3;
+            int cellY = static_cast<int>(particles[i].position.y) >> 3;
             if (cellX < 0) cellX = 0;
             if (cellX >= gridWidth) cellX = gridWidth - 1;
             if (cellY < 0) cellY = 0;
@@ -218,12 +288,11 @@ std::vector<Vec2> PhysicsEngine::computeForces(std::vector<Particle>& particles,
 
         for (int i = start; i < end; ++i) {
             Vec2 netForce(0, 0);
-            
             if (gravityEnabled) {
                 netForce.y += particles[i].mass * gravity;
             }
-            int cellX = static_cast<int>(particles[i].position.x / cellSize);
-            int cellY = static_cast<int>(particles[i].position.y / cellSize);
+            int cellX = static_cast<int>(particles[i].position.x) >> 3;
+            int cellY = static_cast<int>(particles[i].position.y) >> 3;
             if (cellX < 0) cellX = 0;
             if (cellX >= gridWidth) cellX = gridWidth - 1;
             if (cellY < 0) cellY = 0;
@@ -236,27 +305,21 @@ std::vector<Vec2> PhysicsEngine::computeForces(std::vector<Particle>& particles,
                     int nx = cellX + dx;
                     int ny = cellY + dy;
                     if (nx < 0 || nx >= gridWidth || ny < 0 || ny >= gridHeight) continue;
-
                     const std::vector<int>& cellParticles = cells[ny * gridWidth + nx];
                     for (int j : cellParticles) {
                         if (j == i) continue;
-
                         Vec2 direction = particles[j].position - particles[i].position;
                         float distanceSq = direction.x * direction.x + direction.y * direction.y;
                         float combinedRadius = particles[i].radius + particles[j].radius;
                         float combinedRadiusSq = combinedRadius * combinedRadius;
-
                         if (distanceSq < combinedRadiusSq && distanceSq > 0.0f) {
                             float distance = std::sqrt(distanceSq);
                             Vec2 normal = direction / distance;
                             float overlap = combinedRadius - distance;
-                            
                             Vec2 repulsionForce = normal * (repulsionStrength * overlap);
-
-                            netForce -= repulsionForce; 
-                            
+                            netForce -= repulsionForce;
                             if (j >= start && j < end) {
-                                forces[j - start] += repulsionForce; 
+                                forces[j - start] += repulsionForce;
                             }
                         }
                     }
@@ -265,45 +328,36 @@ std::vector<Vec2> PhysicsEngine::computeForces(std::vector<Particle>& particles,
             forces[i - start] = forces[i - start] + netForce;
         }
     } else {
+        // Fallback to non-grid based computation remains unchanged
         const float repulsionStrength = 1.5f;
-
         for (int i = start; i < end; ++i) {
             Vec2 netForce(0, 0);
-            
             if (gravityEnabled) {
                 netForce.y += particles[i].mass * gravity;
             }
-
             for (int j = 0; j < particles.size(); ++j) {
                 if (j == i) continue;
-
                 if (reducedPairwiseComparisonsEnabled && (j % 2 != 0)) {
                     continue;
                 }
-
                 Vec2 direction = particles[j].position - particles[i].position;
                 float distanceSq = direction.x * direction.x + direction.y * direction.y;
                 float combinedRadius = particles[i].radius + particles[j].radius;
                 float combinedRadiusSq = combinedRadius * combinedRadius;
-
                 if (distanceSq < combinedRadiusSq && distanceSq > 0.0f) {
                     float distance = std::sqrt(distanceSq);
                     Vec2 normal = direction / distance;
                     float overlap = combinedRadius - distance;
-                    
                     Vec2 repulsionForce = normal * (repulsionStrength * overlap);
-
-                    netForce -= repulsionForce; 
-                    
+                    netForce -= repulsionForce;
                     if (j >= start && j < end) {
-                        forces[j - start] += repulsionForce; 
+                        forces[j - start] += repulsionForce;
                     }
                 }
             }
             forces[i - start] = forces[i - start] + netForce;
         }
     }
-
     return forces;
 }
 

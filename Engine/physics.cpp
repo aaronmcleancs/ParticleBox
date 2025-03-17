@@ -18,96 +18,222 @@ std::vector<Vec2> PhysicsEngine::computeForces(std::vector<Particle>& particles,
     std::vector<Vec2> forces(end - start, Vec2(0, 0));
 
     if (gridEnabled) {
-        const float cellSize = 8.0f;
-        const int windowWidth = 1200;
-        const int windowHeight = 800;
-        const int gridWidth = static_cast<int>(std::ceil(windowWidth / cellSize));
-        const int gridHeight = static_cast<int>(std::ceil(windowHeight / cellSize));
+        // Constants - power of 2 for fast bit operations
+        constexpr float cellSize = 8.0f;
+        constexpr int windowWidth = 1200;
+        constexpr int windowHeight = 800;
+        const int gridWidth = (windowWidth + static_cast<int>(cellSize) - 1) / static_cast<int>(cellSize);
+        const int gridHeight = (windowHeight + static_cast<int>(cellSize) - 1) / static_cast<int>(cellSize);
+        const int cellShift = 3; // 2^3 = 8
+        
+        // Use flat vectors for cache efficiency
+        std::vector<int> cellCounts(gridWidth * gridHeight, 0);
+        std::vector<int> cellParticles(particles.size());
+        std::vector<int> cellStartIndices(gridWidth * gridHeight + 1, 0);
 
-        std::vector<std::vector<int>> cells(gridWidth * gridHeight);
+        // First pass: count particles per cell
         for (int i = start; i < end; ++i) {
-            // Use bit shifting if positions are positive and cellSize is a power-of-two (8 = 2^3)
-            int cellX = static_cast<int>(particles[i].position.x) >> 3;
-            int cellY = static_cast<int>(particles[i].position.y) >> 3;
-            if (cellX < 0) cellX = 0;
-            if (cellX >= gridWidth) cellX = gridWidth - 1;
-            if (cellY < 0) cellY = 0;
-            if (cellY >= gridHeight) cellY = gridHeight - 1;
-            cells[cellY * gridWidth + cellX].push_back(i);
+            int cellX = static_cast<int>(particles[i].position.x) >> cellShift;
+            int cellY = static_cast<int>(particles[i].position.y) >> cellShift;
+            cellX = std::max(0, std::min(gridWidth - 1, cellX));
+            cellY = std::max(0, std::min(gridHeight - 1, cellY));
+            
+            ++cellCounts[cellY * gridWidth + cellX];
+        }
+        
+        // Compute start indices for each cell
+        int sum = 0;
+        for (int i = 0; i < gridWidth * gridHeight; ++i) {
+            cellStartIndices[i] = sum;
+            sum += cellCounts[i];
+        }
+        cellStartIndices[gridWidth * gridHeight] = sum;
+        
+        // Reset counts to use as insertion indices
+        std::fill(cellCounts.begin(), cellCounts.end(), 0);
+        
+        // Second pass: fill particle indices
+        for (int i = start; i < end; ++i) {
+            int cellX = static_cast<int>(particles[i].position.x) >> cellShift;
+            int cellY = static_cast<int>(particles[i].position.y) >> cellShift;
+            cellX = std::max(0, std::min(gridWidth - 1, cellX));
+            cellY = std::max(0, std::min(gridHeight - 1, cellY));
+            
+            int cellIndex = cellY * gridWidth + cellX;
+            int insertIndex = cellStartIndices[cellIndex] + cellCounts[cellIndex]++;
+            cellParticles[insertIndex] = i;
         }
 
         const float repulsionStrength = 1.5f;
 
+#ifdef __APPLE__
+        // Pre-calculate gravity force for Apple Silicon SIMD
+        simd_float2 gravityForce = {0.0f, 0.0f};
+        if (gravityEnabled) {
+            gravityForce.y = gravity;
+        }
+#endif
+
+        int neighborRange = reducedPairwiseComparisonsEnabled ? 1 : 2;
+
+        // Process particles in parallel using threads
+        #pragma omp parallel for
         for (int i = start; i < end; ++i) {
+#ifdef __APPLE__
+            simd_float2 netForce = {0.0f, 0.0f};
+            if (gravityEnabled) {
+                netForce.y = particles[i].mass * gravity;
+            }
+#else
             Vec2 netForce(0, 0);
             if (gravityEnabled) {
                 netForce.y += particles[i].mass * gravity;
             }
-            int cellX = static_cast<int>(particles[i].position.x) >> 3;
-            int cellY = static_cast<int>(particles[i].position.y) >> 3;
-            if (cellX < 0) cellX = 0;
-            if (cellX >= gridWidth) cellX = gridWidth - 1;
-            if (cellY < 0) cellY = 0;
-            if (cellY >= gridHeight) cellY = gridHeight - 1;
+#endif
 
-            int neighborRange = reducedPairwiseComparisonsEnabled ? 1 : 2; 
+            int cellX = static_cast<int>(particles[i].position.x) >> cellShift;
+            int cellY = static_cast<int>(particles[i].position.y) >> cellShift;
+            cellX = std::max(0, std::min(gridWidth - 1, cellX));
+            cellY = std::max(0, std::min(gridHeight - 1, cellY));
 
-            for (int dx = -neighborRange; dx <= neighborRange; ++dx) {
-                for (int dy = -neighborRange; dy <= neighborRange; ++dy) {
+            // Loop through neighboring cells
+            for (int dy = -neighborRange; dy <= neighborRange; ++dy) {
+                for (int dx = -neighborRange; dx <= neighborRange; ++dx) {
                     int nx = cellX + dx;
                     int ny = cellY + dy;
                     if (nx < 0 || nx >= gridWidth || ny < 0 || ny >= gridHeight) continue;
-                    const std::vector<int>& cellParticles = cells[ny * gridWidth + nx];
-                    for (int j : cellParticles) {
+                    
+                    int cellIndex = ny * gridWidth + nx;
+                    int cellStart = cellStartIndices[cellIndex];
+                    int cellEnd = cellStartIndices[cellIndex + 1];
+                    
+                    for (int idx = cellStart; idx < cellEnd; ++idx) {
+                        int j = cellParticles[idx];
                         if (j == i) continue;
+                        
+#ifdef __APPLE__
+                        // SIMD optimized collision detection for Apple Silicon
+                        simd_float2 posI = {particles[i].position.x, particles[i].position.y};
+                        simd_float2 posJ = {particles[j].position.x, particles[j].position.y};
+                        simd_float2 direction = posJ - posI;
+                        
+                        float distanceSq = simd_dot(direction, direction);
+#else
                         Vec2 direction = particles[j].position - particles[i].position;
                         float distanceSq = direction.x * direction.x + direction.y * direction.y;
+#endif
                         float combinedRadius = particles[i].radius + particles[j].radius;
                         float combinedRadiusSq = combinedRadius * combinedRadius;
-                        if (distanceSq < combinedRadiusSq && distanceSq > 0.0f) {
-                            float distance = std::sqrt(distanceSq);
-                            Vec2 normal = direction / distance;
+                        
+                        if (distanceSq < combinedRadiusSq && distanceSq > 0.0001f) {
+                            // Use fast inverse square root
+                            float invDistance = Vec2::fastInvSqrt(distanceSq);
+                            float distance = 1.0f / invDistance;
+                            
+#ifdef __APPLE__
+                            simd_float2 normal = direction * invDistance;
+                            float overlap = combinedRadius - distance;
+                            simd_float2 repulsionForce = normal * (repulsionStrength * overlap);
+                            netForce = netForce - repulsionForce;
+#else
+                            Vec2 normal = direction * invDistance;
                             float overlap = combinedRadius - distance;
                             Vec2 repulsionForce = normal * (repulsionStrength * overlap);
                             netForce -= repulsionForce;
+#endif
+                            
                             if (j >= start && j < end) {
-                                forces[j - start] += repulsionForce;
+                                // Use atomic operation if multithreaded
+                                #pragma omp atomic
+                                forces[j - start].x += repulsionForce.x;
+                                #pragma omp atomic
+                                forces[j - start].y += repulsionForce.y;
                             }
                         }
                     }
                 }
             }
+            
+#ifdef __APPLE__
+            forces[i - start].x += netForce.x;
+            forces[i - start].y += netForce.y;
+#else
             forces[i - start] = forces[i - start] + netForce;
+#endif
         }
     } else {
-        // Fallback to non-grid based computation remains unchanged
+        // Fallback to non-grid based computation with SIMD optimizations
         const float repulsionStrength = 1.5f;
+        
+        // Process particles in parallel
+        #pragma omp parallel for
         for (int i = start; i < end; ++i) {
+#ifdef __APPLE__
+            simd_float2 netForce = {0.0f, 0.0f};
+            if (gravityEnabled) {
+                netForce.y = particles[i].mass * gravity;
+            }
+#else
             Vec2 netForce(0, 0);
             if (gravityEnabled) {
                 netForce.y += particles[i].mass * gravity;
             }
+#endif
+
             for (int j = 0; j < particles.size(); ++j) {
                 if (j == i) continue;
                 if (reducedPairwiseComparisonsEnabled && (j % 2 != 0)) {
                     continue;
                 }
+                
+#ifdef __APPLE__
+                // SIMD optimized collision detection for Apple Silicon
+                simd_float2 posI = {particles[i].position.x, particles[i].position.y};
+                simd_float2 posJ = {particles[j].position.x, particles[j].position.y};
+                simd_float2 direction = posJ - posI;
+                
+                float distanceSq = simd_dot(direction, direction);
+#else
                 Vec2 direction = particles[j].position - particles[i].position;
                 float distanceSq = direction.x * direction.x + direction.y * direction.y;
+#endif
+                
                 float combinedRadius = particles[i].radius + particles[j].radius;
                 float combinedRadiusSq = combinedRadius * combinedRadius;
-                if (distanceSq < combinedRadiusSq && distanceSq > 0.0f) {
-                    float distance = std::sqrt(distanceSq);
-                    Vec2 normal = direction / distance;
+                
+                if (distanceSq < combinedRadiusSq && distanceSq > 0.0001f) {
+                    // Use fast inverse square root
+                    float invDistance = Vec2::fastInvSqrt(distanceSq);
+                    float distance = 1.0f / invDistance;
+                    
+#ifdef __APPLE__
+                    simd_float2 normal = direction * invDistance;
+                    float overlap = combinedRadius - distance;
+                    simd_float2 repulsionForce = normal * (repulsionStrength * overlap);
+                    netForce = netForce - repulsionForce;
+#else
+                    Vec2 normal = direction * invDistance;
                     float overlap = combinedRadius - distance;
                     Vec2 repulsionForce = normal * (repulsionStrength * overlap);
                     netForce -= repulsionForce;
+#endif
+                    
                     if (j >= start && j < end) {
-                        forces[j - start] += repulsionForce;
+                        // Use atomic operation if multithreaded
+                        #pragma omp atomic
+                        forces[j - start].x += repulsionForce.x;
+                        #pragma omp atomic
+                        forces[j - start].y += repulsionForce.y;
                     }
                 }
             }
+            
+#ifdef __APPLE__
+            forces[i - start].x += netForce.x;
+            forces[i - start].y += netForce.y;
+#else
             forces[i - start] = forces[i - start] + netForce;
+#endif
         }
     }
     return forces;

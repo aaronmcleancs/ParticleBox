@@ -21,8 +21,8 @@ class PhysicsEngine {
     bool gridEnabled = true;
     bool reducedPairwiseComparisonsEnabled = true;
     
-    // Constants for spatial partitioning
-    static constexpr int CELL_SIZE_SHIFT = 3; // 2^3 = 8
+    
+    static constexpr int CELL_SIZE_SHIFT = 3; 
     static constexpr float CELL_SIZE = 8.0f;
     static constexpr int WINDOW_WIDTH = 1200;
     static constexpr int WINDOW_HEIGHT = 800;
@@ -34,11 +34,11 @@ public:
     void setGridEnabled(bool enabled) { gridEnabled = enabled; }
     void setReducedPairwiseComparisonsEnabled(bool enabled) { reducedPairwiseComparisonsEnabled = enabled; }
 
-    // Main physics methods
+    
     std::vector<Vec2> computeForces(std::vector<Particle>& particles, int start, int end);
     void applyBoundaries(Particle& particle);
     
-    // Helper methods
+    
     inline int calculateGridWidth() const { 
         return (WINDOW_WIDTH + static_cast<int>(CELL_SIZE) - 1) / static_cast<int>(CELL_SIZE);
     }
@@ -47,7 +47,7 @@ public:
         return (WINDOW_HEIGHT + static_cast<int>(CELL_SIZE) - 1) / static_cast<int>(CELL_SIZE);
     }
     
-    // Fast cell calculation
+    
     inline int getCellX(const float x) const {
         return static_cast<int>(x) >> CELL_SIZE_SHIFT;
     }

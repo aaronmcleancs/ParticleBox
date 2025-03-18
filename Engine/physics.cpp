@@ -18,20 +18,20 @@ std::vector<Vec2> PhysicsEngine::computeForces(std::vector<Particle>& particles,
     std::vector<Vec2> forces(end - start, Vec2(0, 0));
 
     if (gridEnabled) {
-        // Constants - power of 2 for fast bit operations
+        
         constexpr float cellSize = 8.0f;
         constexpr int windowWidth = 1200;
         constexpr int windowHeight = 800;
         const int gridWidth = (windowWidth + static_cast<int>(cellSize) - 1) / static_cast<int>(cellSize);
         const int gridHeight = (windowHeight + static_cast<int>(cellSize) - 1) / static_cast<int>(cellSize);
-        const int cellShift = 3; // 2^3 = 8
+        const int cellShift = 3; 
         
-        // Use flat vectors for cache efficiency
+        
         std::vector<int> cellCounts(gridWidth * gridHeight, 0);
         std::vector<int> cellParticles(particles.size());
         std::vector<int> cellStartIndices(gridWidth * gridHeight + 1, 0);
 
-        // First pass: count particles per cell
+        
         for (int i = start; i < end; ++i) {
             int cellX = static_cast<int>(particles[i].position.x) >> cellShift;
             int cellY = static_cast<int>(particles[i].position.y) >> cellShift;
@@ -41,7 +41,7 @@ std::vector<Vec2> PhysicsEngine::computeForces(std::vector<Particle>& particles,
             ++cellCounts[cellY * gridWidth + cellX];
         }
         
-        // Compute start indices for each cell
+        
         int sum = 0;
         for (int i = 0; i < gridWidth * gridHeight; ++i) {
             cellStartIndices[i] = sum;
@@ -49,10 +49,10 @@ std::vector<Vec2> PhysicsEngine::computeForces(std::vector<Particle>& particles,
         }
         cellStartIndices[gridWidth * gridHeight] = sum;
         
-        // Reset counts to use as insertion indices
+        
         std::fill(cellCounts.begin(), cellCounts.end(), 0);
         
-        // Second pass: fill particle indices
+        
         for (int i = start; i < end; ++i) {
             int cellX = static_cast<int>(particles[i].position.x) >> cellShift;
             int cellY = static_cast<int>(particles[i].position.y) >> cellShift;
@@ -67,7 +67,7 @@ std::vector<Vec2> PhysicsEngine::computeForces(std::vector<Particle>& particles,
         const float repulsionStrength = 1.5f;
 
 #ifdef __APPLE__
-        // Pre-calculate gravity force for Apple Silicon SIMD
+        
         simd_float2 gravityForce = {0.0f, 0.0f};
         if (gravityEnabled) {
             gravityForce.y = gravity;
@@ -76,7 +76,7 @@ std::vector<Vec2> PhysicsEngine::computeForces(std::vector<Particle>& particles,
 
         int neighborRange = reducedPairwiseComparisonsEnabled ? 1 : 2;
 
-        // Process particles in parallel using threads
+        
         #pragma omp parallel for
         for (int i = start; i < end; ++i) {
 #ifdef __APPLE__
@@ -96,7 +96,7 @@ std::vector<Vec2> PhysicsEngine::computeForces(std::vector<Particle>& particles,
             cellX = std::max(0, std::min(gridWidth - 1, cellX));
             cellY = std::max(0, std::min(gridHeight - 1, cellY));
 
-            // Loop through neighboring cells
+            
             for (int dy = -neighborRange; dy <= neighborRange; ++dy) {
                 for (int dx = -neighborRange; dx <= neighborRange; ++dx) {
                     int nx = cellX + dx;
@@ -112,7 +112,7 @@ std::vector<Vec2> PhysicsEngine::computeForces(std::vector<Particle>& particles,
                         if (j == i) continue;
                         
 #ifdef __APPLE__
-                        // SIMD optimized collision detection for Apple Silicon
+                        
                         simd_float2 posI = {particles[i].position.x, particles[i].position.y};
                         simd_float2 posJ = {particles[j].position.x, particles[j].position.y};
                         simd_float2 direction = posJ - posI;
@@ -126,7 +126,7 @@ std::vector<Vec2> PhysicsEngine::computeForces(std::vector<Particle>& particles,
                         float combinedRadiusSq = combinedRadius * combinedRadius;
                         
                         if (distanceSq < combinedRadiusSq && distanceSq > 0.0001f) {
-                            // Use fast inverse square root
+                            
                             float invDistance = Vec2::fastInvSqrt(distanceSq);
                             float distance = 1.0f / invDistance;
                             
@@ -143,7 +143,7 @@ std::vector<Vec2> PhysicsEngine::computeForces(std::vector<Particle>& particles,
 #endif
                             
                             if (j >= start && j < end) {
-                                // Use atomic operation if multithreaded
+                                
                                 #pragma omp atomic
                                 forces[j - start].x += repulsionForce.x;
                                 #pragma omp atomic
@@ -162,10 +162,10 @@ std::vector<Vec2> PhysicsEngine::computeForces(std::vector<Particle>& particles,
 #endif
         }
     } else {
-        // Fallback to non-grid based computation with SIMD optimizations
+        
         const float repulsionStrength = 1.5f;
         
-        // Process particles in parallel
+        
         #pragma omp parallel for
         for (int i = start; i < end; ++i) {
 #ifdef __APPLE__
@@ -187,7 +187,7 @@ std::vector<Vec2> PhysicsEngine::computeForces(std::vector<Particle>& particles,
                 }
                 
 #ifdef __APPLE__
-                // SIMD optimized collision detection for Apple Silicon
+                
                 simd_float2 posI = {particles[i].position.x, particles[i].position.y};
                 simd_float2 posJ = {particles[j].position.x, particles[j].position.y};
                 simd_float2 direction = posJ - posI;
@@ -202,7 +202,7 @@ std::vector<Vec2> PhysicsEngine::computeForces(std::vector<Particle>& particles,
                 float combinedRadiusSq = combinedRadius * combinedRadius;
                 
                 if (distanceSq < combinedRadiusSq && distanceSq > 0.0001f) {
-                    // Use fast inverse square root
+                    
                     float invDistance = Vec2::fastInvSqrt(distanceSq);
                     float distance = 1.0f / invDistance;
                     
@@ -219,7 +219,7 @@ std::vector<Vec2> PhysicsEngine::computeForces(std::vector<Particle>& particles,
 #endif
                     
                     if (j >= start && j < end) {
-                        // Use atomic operation if multithreaded
+                        
                         #pragma omp atomic
                         forces[j - start].x += repulsionForce.x;
                         #pragma omp atomic

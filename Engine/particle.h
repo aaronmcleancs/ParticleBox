@@ -14,7 +14,7 @@ struct Vec2 {
     Vec2(float x = 0, float y = 0) : x(x), y(y) {}
 
 #ifdef __APPLE__
-    // SIMD optimized operations for Apple Silicon
+    
     Vec2 operator+(const Vec2& other) const {
         simd_float2 a = {x, y};
         simd_float2 b = {other.x, other.y};
@@ -38,7 +38,7 @@ struct Vec2 {
     Vec2 operator/(float scalar) const {
         if (scalar == 0.0f) return {0.0f, 0.0f};
         float invScalar = 1.0f / scalar;
-        return *this * invScalar; // Multiply by inverse is faster than division
+        return *this * invScalar; 
     }
 #else
     Vec2 operator+(const Vec2& other) const {
@@ -70,7 +70,7 @@ struct Vec2 {
         return *this;
     }
 
-    // Fast inverse square root (Quake III optimization)
+    
     static inline float fastInvSqrt(float number) {
         union {
             float f;

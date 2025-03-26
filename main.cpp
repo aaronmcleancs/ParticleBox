@@ -1,16 +1,38 @@
 #include <SDL.h>
 #include <SDL_ttf.h>
+#include <string>
 #include "simulation.h"
 #include "gui.h"
 
+// Include your performance test header
+#include "test.h"
+
 int main(int argc, char* argv[]) {
+    // Check command-line arguments to see if "-test" was provided.
+    bool runTests = false;
+    for (int i = 1; i < argc; ++i) {
+        if (std::string(argv[i]) == "-test") {
+            runTests = true;
+            break;
+        }
+    }
+
+    // If "-test" was specified, run headless performance tests and then exit.
+    if (runTests) {
+        runPerformanceTests();
+        return 0; 
+    }
+
+    // Otherwise, proceed with normal SDL initialization and simulation:
     SDL_Init(SDL_INIT_VIDEO | SDL_INIT_TIMER);
     TTF_Init();
 
-    SDL_Window* simWindow = SDL_CreateWindow("Particle Simulator", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, 1200, 800, 0);
+    SDL_Window* simWindow = SDL_CreateWindow("Particle Simulator",
+        SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, 1200, 800, 0);
     SDL_Renderer* simRenderer = SDL_CreateRenderer(simWindow, -1, SDL_RENDERER_ACCELERATED);
 
-    SDL_Window* guiWindow = SDL_CreateWindow("Controls", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, 400, 760, 0);
+    SDL_Window* guiWindow = SDL_CreateWindow("Controls",
+        SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, 400, 760, 0);
     SDL_Renderer* guiRenderer = SDL_CreateRenderer(guiWindow, -1, SDL_RENDERER_ACCELERATED);
 
     TTF_Font* font = TTF_OpenFont("/Users/aaronmclean/Library/Fonts/3270-Regular.ttf", 128);

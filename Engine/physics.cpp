@@ -84,10 +84,43 @@ std::vector<Vec2> PhysicsEngine::computeForces(std::vector<Particle>& particles,
             if (gravityEnabled) {
                 netForce.y = particles[i].mass * gravity;
             }
+            
+            // Apply mouse repulsion if enabled
+            if (mouseRepulsionEnabled) {
+                simd_float2 particlePos = {particles[i].position.x, particles[i].position.y};
+                simd_float2 mousePos = {mousePosition.x, mousePosition.y};
+                simd_float2 direction = particlePos - mousePos;
+                
+                float distanceSq = simd_dot(direction, direction);
+                float mouseRadiusSq = MOUSE_REPULSION_RADIUS * MOUSE_REPULSION_RADIUS;
+                
+                if (distanceSq < mouseRadiusSq && distanceSq > 0.0001f) {
+                    float invDistance = Vec2::fastInvSqrt(distanceSq);
+                    simd_float2 normal = direction * invDistance;
+                    float strength = MOUSE_REPULSION_STRENGTH * (1.0f - sqrtf(distanceSq) / MOUSE_REPULSION_RADIUS);
+                    simd_float2 repulsionForce = normal * strength;
+                    netForce = netForce + repulsionForce;
+                }
+            }
 #else
             Vec2 netForce(0, 0);
             if (gravityEnabled) {
                 netForce.y += particles[i].mass * gravity;
+            }
+            
+            // Apply mouse repulsion if enabled
+            if (mouseRepulsionEnabled) {
+                Vec2 direction = particles[i].position - mousePosition;
+                float distanceSq = direction.magnitudeSq();
+                float mouseRadiusSq = MOUSE_REPULSION_RADIUS * MOUSE_REPULSION_RADIUS;
+                
+                if (distanceSq < mouseRadiusSq && distanceSq > 0.0001f) {
+                    float invDistance = Vec2::fastInvSqrt(distanceSq);
+                    Vec2 normal = direction * invDistance;
+                    float strength = MOUSE_REPULSION_STRENGTH * (1.0f - std::sqrt(distanceSq) / MOUSE_REPULSION_RADIUS);
+                    Vec2 repulsionForce = normal * strength;
+                    netForce += repulsionForce;
+                }
             }
 #endif
 
@@ -173,10 +206,43 @@ std::vector<Vec2> PhysicsEngine::computeForces(std::vector<Particle>& particles,
             if (gravityEnabled) {
                 netForce.y = particles[i].mass * gravity;
             }
+            
+            // Apply mouse repulsion if enabled
+            if (mouseRepulsionEnabled) {
+                simd_float2 particlePos = {particles[i].position.x, particles[i].position.y};
+                simd_float2 mousePos = {mousePosition.x, mousePosition.y};
+                simd_float2 direction = particlePos - mousePos;
+                
+                float distanceSq = simd_dot(direction, direction);
+                float mouseRadiusSq = MOUSE_REPULSION_RADIUS * MOUSE_REPULSION_RADIUS;
+                
+                if (distanceSq < mouseRadiusSq && distanceSq > 0.0001f) {
+                    float invDistance = Vec2::fastInvSqrt(distanceSq);
+                    simd_float2 normal = direction * invDistance;
+                    float strength = MOUSE_REPULSION_STRENGTH * (1.0f - sqrtf(distanceSq) / MOUSE_REPULSION_RADIUS);
+                    simd_float2 repulsionForce = normal * strength;
+                    netForce = netForce + repulsionForce;
+                }
+            }
 #else
             Vec2 netForce(0, 0);
             if (gravityEnabled) {
                 netForce.y += particles[i].mass * gravity;
+            }
+            
+            // Apply mouse repulsion if enabled
+            if (mouseRepulsionEnabled) {
+                Vec2 direction = particles[i].position - mousePosition;
+                float distanceSq = direction.magnitudeSq();
+                float mouseRadiusSq = MOUSE_REPULSION_RADIUS * MOUSE_REPULSION_RADIUS;
+                
+                if (distanceSq < mouseRadiusSq && distanceSq > 0.0001f) {
+                    float invDistance = Vec2::fastInvSqrt(distanceSq);
+                    Vec2 normal = direction * invDistance;
+                    float strength = MOUSE_REPULSION_STRENGTH * (1.0f - std::sqrt(distanceSq) / MOUSE_REPULSION_RADIUS);
+                    Vec2 repulsionForce = normal * strength;
+                    netForce += repulsionForce;
+                }
             }
 #endif
 

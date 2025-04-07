@@ -35,6 +35,10 @@ public:
     void setParticle(int count);
     float simulation_speed;
     Vec2 getAverageVelocity() const;
+    
+    // Mouse position handling for repulsion
+    void updateMousePosition(int x, int y) { physics.setMousePosition(static_cast<float>(x), static_cast<float>(y)); }
+    void disableMouseRepulsion() { physics.disableMouseRepulsion(); }
 
     
     void toggleMultithreading() { multithreadingEnabled = !multithreadingEnabled; }

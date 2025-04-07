@@ -72,9 +72,13 @@ int main(int argc, char* argv[]) {
                 if (event.button.button == SDL_BUTTON_LEFT) {
                     mouseDown = false;
                 }
-            } else if (event.type == SDL_MOUSEMOTION && mouseDown) {
+                // Disable mouse repulsion when not hovering
+                simulation.disableMouseRepulsion();
+            } else if (event.type == SDL_MOUSEMOTION) {
                 mouseX = event.motion.x;
                 mouseY = event.motion.y;
+                // Update mouse position for repulsion regardless of mouse button state
+                simulation.updateMousePosition(mouseX, mouseY);
             }
             
             gui.handleEvent(event, simulation);

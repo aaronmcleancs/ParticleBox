@@ -27,12 +27,19 @@ class PhysicsEngine {
     static constexpr int WINDOW_WIDTH = 1200;
     static constexpr int WINDOW_HEIGHT = 800;
     static constexpr float REPULSION_STRENGTH = 1.5f;
+    static constexpr float MOUSE_REPULSION_STRENGTH = 100.0f;
+    static constexpr float MOUSE_REPULSION_RADIUS = 100.0f;
+    
+    Vec2 mousePosition{0.0f, 0.0f};
+    bool mouseRepulsionEnabled = false;
     
 public:
     float gravity = 9.81;
     void toggleGravity() { gravityEnabled = !gravityEnabled; }
     void setGridEnabled(bool enabled) { gridEnabled = enabled; }
     void setReducedPairwiseComparisonsEnabled(bool enabled) { reducedPairwiseComparisonsEnabled = enabled; }
+    void setMousePosition(float x, float y) { mousePosition.x = x; mousePosition.y = y; mouseRepulsionEnabled = true; }
+    void disableMouseRepulsion() { mouseRepulsionEnabled = false; }
 
     
     std::vector<Vec2> computeForces(std::vector<Particle>& particles, int start, int end);

@@ -176,8 +176,9 @@ void GUI::initTexture(SDL_Texture** texture, const char* text, SDL_Color color) 
 
 void GUI::handleEvent(SDL_Event& event, Simulation& simulation) {
     if (event.type == SDL_MOUSEBUTTONDOWN) {
-        int x, y;
-        SDL_GetMouseState(&x, &y);
+        
+        int x = event.button.x;
+        int y = event.button.y;
 
         if (pointInRect(x, y, startButton)) {
             simulation.start();
@@ -228,15 +229,43 @@ bool GUI::pointInRect(int x, int y, const SDL_Rect& rect) {
 
 void GUI::renderButton(const SDL_Rect& rect, SDL_Texture* texture, const std::string& label, bool toggled) {
     GUIStyle style;
+    
+    
     int mouseX, mouseY;
-    SDL_GetMouseState(&mouseX, &mouseY);
-    bool hovered = pointInRect(mouseX, mouseY, rect);
-
-    SDL_Color bgColor = hovered ? style.buttonHoverColor : style.buttonColor;
-    if (toggled) {
-        bgColor = {100, 180, 100, 255}; 
+    Uint32 mouseState;
+    
+    
+    SDL_Window* window = SDL_RenderGetWindow(renderer);
+    if (window) {
+        
+        bool isMouseFocused = (SDL_GetWindowFlags(window) & SDL_WINDOW_MOUSE_FOCUS);
+        
+        if (isMouseFocused) {
+            mouseState = SDL_GetMouseState(&mouseX, &mouseY);
+            bool hovered = pointInRect(mouseX, mouseY, rect);
+            
+            SDL_Color bgColor = hovered ? style.buttonHoverColor : style.buttonColor;
+            if (toggled) {
+                bgColor = {100, 180, 100, 255};
+            }
+            drawRect(renderer, rect, bgColor);
+        } else {
+            
+            SDL_Color bgColor = style.buttonColor;
+            if (toggled) {
+                bgColor = {100, 180, 100, 255};
+            }
+            drawRect(renderer, rect, bgColor);
+        }
+    } else {
+        
+        SDL_Color bgColor = style.buttonColor;
+        if (toggled) {
+            bgColor = {100, 180, 100, 255};
+        }
+        drawRect(renderer, rect, bgColor);
     }
-    drawRect(renderer, rect, bgColor);
+    
     if (texture) {
         SDL_RenderCopy(renderer, texture, NULL, &rect);
     } else {

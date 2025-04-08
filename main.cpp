@@ -63,25 +63,40 @@ int main(int argc, char* argv[]) {
             if (event.type == SDL_QUIT) {
                 running = false;
             } else if (event.type == SDL_MOUSEBUTTONDOWN) {
-                if (event.button.button == SDL_BUTTON_LEFT) {
-                    mouseDown = true;
-                    mouseX = event.button.x;
-                    mouseY = event.button.y;
+                
+                if (event.button.windowID == SDL_GetWindowID(simWindow)) {
+                    if (event.button.button == SDL_BUTTON_LEFT) {
+                        mouseDown = true;
+                        mouseX = event.button.x;
+                        mouseY = event.button.y;
+                    }
+                } else if (event.button.windowID == SDL_GetWindowID(guiWindow)) {
+                    
+                    gui.handleEvent(event, simulation);
                 }
             } else if (event.type == SDL_MOUSEBUTTONUP) {
-                if (event.button.button == SDL_BUTTON_LEFT) {
-                    mouseDown = false;
+                if (event.button.windowID == SDL_GetWindowID(simWindow)) {
+                    if (event.button.button == SDL_BUTTON_LEFT) {
+                        mouseDown = false;
+                    }
+                    simulation.disableMouseRepulsion();
+                } else if (event.button.windowID == SDL_GetWindowID(guiWindow)) {
+                    
+                    gui.handleEvent(event, simulation);
                 }
-                
-                simulation.disableMouseRepulsion();
             } else if (event.type == SDL_MOUSEMOTION) {
-                mouseX = event.motion.x;
-                mouseY = event.motion.y;
+                if (event.motion.windowID == SDL_GetWindowID(simWindow)) {
+                    mouseX = event.motion.x;
+                    mouseY = event.motion.y;
+                    simulation.updateMousePosition(mouseX, mouseY);
+                } else if (event.motion.windowID == SDL_GetWindowID(guiWindow)) {
+                    
+                    gui.handleEvent(event, simulation);
+                }
+            } else {
                 
-                simulation.updateMousePosition(mouseX, mouseY);
+                gui.handleEvent(event, simulation);
             }
-            
-            gui.handleEvent(event, simulation);
         }
 
         Uint32 currentTime = SDL_GetTicks();

@@ -58,15 +58,15 @@ void Simulation::update(double deltaTime) {
 
     if (multithreadingEnabled) {
 #ifdef __APPLE__
-        // Use Apple's Grand Central Dispatch for optimal M1 performance
+        
         const size_t numThreads = std::thread::hardware_concurrency();
-        const size_t effectiveThreads = std::min(numThreads, static_cast<size_t>(8)); // M1 has 8 cores
+        const size_t effectiveThreads = std::min(numThreads, static_cast<size_t>(8)); 
         const size_t chunkSize = (totalParticles + effectiveThreads - 1) / effectiveThreads;
         
-        // Create a semaphore to wait for all tasks to complete
+        
         dispatch_semaphore_t semaphore = dispatch_semaphore_create(0);
         
-        // Use a high-priority concurrent queue
+        
         dispatch_queue_t queue = dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_HIGH, 0);
         
         size_t processed = 0;
@@ -78,24 +78,24 @@ void Simulation::update(double deltaTime) {
             if (start >= end) break;
             
             dispatch_async(queue, ^{
-                // Compute forces for this chunk of particles
+                
                 std::vector<Vec2> forces = physics.computeForces(particles, static_cast<int>(start), static_cast<int>(end));
                 
-                // Update positions and velocities for this chunk
+                
                 for (size_t j = start; j < end; ++j) {
                     Particle &p = particles[j];
-                    // Use SIMD for vector operations
+                    
                     simd_float2 vel = {p.velocity.x, p.velocity.y};
                     simd_float2 force = {forces[j - start].x, forces[j - start].y};
                     simd_float2 deltaVel = force * (p.invMass * static_cast<float>(deltaTime));
                     vel = vel + deltaVel;
                     
-                    // Update position with new velocity
+                    
                     simd_float2 pos = {p.position.x, p.position.y};
                     simd_float2 deltaPos = vel * static_cast<float>(deltaTime);
                     pos = pos + deltaPos;
                     
-                    // Store back results
+                    
                     p.velocity.x = vel.x;
                     p.velocity.y = vel.y;
                     p.position.x = pos.x;
@@ -104,17 +104,17 @@ void Simulation::update(double deltaTime) {
                     physics.applyBoundaries(p);
                 }
                 
-                // Signal completion
+                
                 dispatch_semaphore_signal(semaphore);
             });
         }
         
-        // Wait for all tasks to complete
+        
         for (size_t i = 0; i < processed / chunkSize; ++i) {
             dispatch_semaphore_wait(semaphore, DISPATCH_TIME_FOREVER);
         }
 #else
-        // Standard approach for non-Apple platforms
+        
         unsigned int numThreads = std::thread::hardware_concurrency();
         if (numThreads == 0) {
             numThreads = 4;
@@ -157,25 +157,25 @@ void Simulation::update(double deltaTime) {
         }
 #endif
     } else {
-        // Single-threaded execution with optimizations
+        
         std::vector<Vec2> forces = physics.computeForces(particles, 0, static_cast<int>(totalParticles));
         
 #ifdef __APPLE__
         for (size_t i = 0; i < totalParticles; ++i) {
             Particle &p = particles[i];
             
-            // Use SIMD for vector operations
+            
             simd_float2 vel = {p.velocity.x, p.velocity.y};
             simd_float2 force = {forces[i].x, forces[i].y};
             simd_float2 deltaVel = force * (p.invMass * static_cast<float>(deltaTime));
             vel = vel + deltaVel;
             
-            // Update position with new velocity
+            
             simd_float2 pos = {p.position.x, p.position.y};
             simd_float2 deltaPos = vel * static_cast<float>(deltaTime);
             pos = pos + deltaPos;
             
-            // Store back results
+            
             p.velocity.x = vel.x;
             p.velocity.y = vel.y;
             p.position.x = pos.x;
@@ -199,17 +199,17 @@ void Simulation::update(double deltaTime) {
 
     calculateFrameRate();
     
-    // Use more aggressive frame pacing for maximum performance
+    
     auto currentTime = std::chrono::steady_clock::now();
     auto frameDuration = std::chrono::duration_cast<std::chrono::microseconds>(
         currentTime - lastFrameTime
     );
     
-    // Target 60+ FPS but don't waste power when GPU bound
-    constexpr int targetFrameDuration = 16666; // 16.666ms = ~60 FPS in microseconds
+    
+    constexpr int targetFrameDuration = 16666; 
     if (frameDuration.count() < targetFrameDuration) {
 #ifdef __APPLE__
-        // On Apple M1, use more precise timing for steady frame rate
+        
         mach_timebase_info_data_t timebase;
         mach_timebase_info(&timebase);
         uint64_t delay_ns = (targetFrameDuration - frameDuration.count()) * 1000;

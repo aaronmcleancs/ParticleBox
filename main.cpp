@@ -4,11 +4,11 @@
 #include "simulation.h"
 #include "gui.h"
 
-// Include your performance test header
+
 #include "test.h"
 
 int main(int argc, char* argv[]) {
-    // Check command-line arguments to see if "-test" was provided.
+    
     bool runTests = false;
     for (int i = 1; i < argc; ++i) {
         if (std::string(argv[i]) == "-test") {
@@ -17,13 +17,13 @@ int main(int argc, char* argv[]) {
         }
     }
 
-    // If "-test" was specified, run headless performance tests and then exit.
+    
     if (runTests) {
         runPerformanceTests();
         return 0; 
     }
 
-    // Otherwise, proceed with normal SDL initialization and simulation:
+    
     SDL_Init(SDL_INIT_VIDEO | SDL_INIT_TIMER);
     TTF_Init();
 
@@ -72,12 +72,12 @@ int main(int argc, char* argv[]) {
                 if (event.button.button == SDL_BUTTON_LEFT) {
                     mouseDown = false;
                 }
-                // Disable mouse repulsion when not hovering
+                
                 simulation.disableMouseRepulsion();
             } else if (event.type == SDL_MOUSEMOTION) {
                 mouseX = event.motion.x;
                 mouseY = event.motion.y;
-                // Update mouse position for repulsion regardless of mouse button state
+                
                 simulation.updateMousePosition(mouseX, mouseY);
             }
             

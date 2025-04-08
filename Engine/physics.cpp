@@ -85,7 +85,6 @@ std::vector<Vec2> PhysicsEngine::computeForces(std::vector<Particle>& particles,
                 netForce.y = particles[i].mass * gravity;
             }
             
-            // Apply mouse repulsion if enabled
             if (mouseRepulsionEnabled) {
                 simd_float2 particlePos = {particles[i].position.x, particles[i].position.y};
                 simd_float2 mousePos = {mousePosition.x, mousePosition.y};
@@ -108,7 +107,6 @@ std::vector<Vec2> PhysicsEngine::computeForces(std::vector<Particle>& particles,
                 netForce.y += particles[i].mass * gravity;
             }
             
-            // Apply mouse repulsion if enabled
             if (mouseRepulsionEnabled) {
                 Vec2 direction = particles[i].position - mousePosition;
                 float distanceSq = direction.magnitudeSq();
@@ -207,7 +205,6 @@ std::vector<Vec2> PhysicsEngine::computeForces(std::vector<Particle>& particles,
                 netForce.y = particles[i].mass * gravity;
             }
             
-            // Apply mouse repulsion if enabled
             if (mouseRepulsionEnabled) {
                 simd_float2 particlePos = {particles[i].position.x, particles[i].position.y};
                 simd_float2 mousePos = {mousePosition.x, mousePosition.y};
@@ -230,7 +227,6 @@ std::vector<Vec2> PhysicsEngine::computeForces(std::vector<Particle>& particles,
                 netForce.y += particles[i].mass * gravity;
             }
             
-            // Apply mouse repulsion if enabled
             if (mouseRepulsionEnabled) {
                 Vec2 direction = particles[i].position - mousePosition;
                 float distanceSq = direction.magnitudeSq();

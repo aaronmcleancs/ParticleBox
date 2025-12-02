@@ -1,54 +1,66 @@
 #ifndef SIMULATION_H
 #define SIMULATION_H
 
-#include <vector>
 #include "particle.h"
 #include "physics.h"
+#include <chrono>
+#include <vector>
 
 class Simulation {
-    PhysicsEngine physics;
-    std::vector<Particle> particles;
-    bool running;
-    std::chrono::steady_clock::time_point lastFrameTime;
-    int frameCount;
-    float frameRate;
-
-    
-    bool multithreadingEnabled;
-    bool gridEnabled;
-    bool reducedPairwiseComparisonsEnabled;
-
 public:
-    Simulation();
-    void start();
-    void stop();
-    void update(double deltaTime);
-    void calculateFrameRate();
-    float getFrameRate() const;
-    void render(SDL_Renderer* renderer);
-    void reset(int count);
-    void spawnParticlesAtMouse(int x, int y, int count);
-    Particle createParticleAtPosition(int x, int y);
-    Particle createRandomParticle();
-    int getParticleCount() const;
-    void toggleGravity();
-    void setParticle(int count);
-    float simulation_speed;
-    Vec2 getAverageVelocity() const;
-    
-    // Mouse position handling for repulsion
-    void updateMousePosition(int x, int y) { physics.setMousePosition(static_cast<float>(x), static_cast<float>(y)); }
-    void disableMouseRepulsion() { physics.disableMouseRepulsion(); }
+  Simulation();
 
-    
-    void toggleMultithreading() { multithreadingEnabled = !multithreadingEnabled; }
-    void toggleGrid() { gridEnabled = !gridEnabled; physics.setGridEnabled(gridEnabled); }
-    void toggleReducedPairwiseComparisons() { reducedPairwiseComparisonsEnabled = !reducedPairwiseComparisonsEnabled; physics.setReducedPairwiseComparisonsEnabled(reducedPairwiseComparisonsEnabled); }
+  void start();
+  void stop();
+  void reset(int particleCount);
+  void update(double deltaTime);
+  void render(SDL_Renderer *renderer);
 
-    
-    bool isMultithreadingEnabled() const { return multithreadingEnabled; }
-    bool isGridEnabled() const { return gridEnabled; }
-    bool isReducedPairwiseComparisonsEnabled() const { return reducedPairwiseComparisonsEnabled; }
+  // Interaction
+  void spawnParticlesAtMouse(int x, int y, int count);
+  void updateMousePosition(int x, int y);
+  void disableMouseRepulsion();
+
+  // Toggles
+  void toggleGravity();
+  void toggleMultithreading(); // Kept for interface compatibility, though
+                               // physics engine handles threading now
+  void toggleGrid();
+  void toggleReducedPairwiseComparisons(); // Kept for interface compatibility
+
+  // Getters
+  float getFrameRate() const;
+  int getParticleCount() const;
+  Vec2 getAverageVelocity() const;
+
+  // Setters
+  void setParticle(int count);
+
+  // State
+  bool isMultithreadingEnabled() const { return multithreadingEnabled; }
+  bool isGridEnabled() const { return gridEnabled; }
+  bool isReducedPairwiseComparisonsEnabled() const {
+    return reducedPairwiseComparisonsEnabled;
+  }
+
+private:
+  bool running;
+  bool multithreadingEnabled;
+  bool gridEnabled;
+  bool reducedPairwiseComparisonsEnabled;
+
+  PhysicsEngine physics;
+  ParticleSystem particles;
+
+  // Time keeping
+  std::chrono::steady_clock::time_point lastFrameTime;
+  int frameCount;
+  float frameRate;
+  void calculateFrameRate();
+
+  // Helpers
+  void createRandomParticle();
+  void createParticleAtPosition(int x, int y);
 };
 
 #endif

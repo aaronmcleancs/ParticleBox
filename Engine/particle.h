@@ -1,132 +1,83 @@
 #ifndef PARTICLE_H
 #define PARTICLE_H
 
-#include <SDL.h>
-#include <cmath> 
+#include <SDL2/SDL.h>
+#include <algorithm>
+#include <cmath>
+#include <string>
+#include <vector>
 
 #ifdef __APPLE__
 #include <simd/simd.h>
 #endif
 
+// Simple Vec2 for non-critical paths
 struct Vec2 {
-    float x, y;
-
-    Vec2(float x = 0, float y = 0) : x(x), y(y) {}
-
-#ifdef __APPLE__
-    
-    Vec2 operator+(const Vec2& other) const {
-        simd_float2 a = {x, y};
-        simd_float2 b = {other.x, other.y};
-        simd_float2 result = a + b;
-        return {result.x, result.y};
-    }
-
-    Vec2 operator-(const Vec2& other) const {
-        simd_float2 a = {x, y};
-        simd_float2 b = {other.x, other.y};
-        simd_float2 result = a - b;
-        return {result.x, result.y};
-    }
-
-    Vec2 operator*(float scalar) const {
-        simd_float2 a = {x, y};
-        simd_float2 result = a * scalar;
-        return {result.x, result.y};
-    }
-    
-    Vec2 operator/(float scalar) const {
-        if (scalar == 0.0f) return {0.0f, 0.0f};
-        float invScalar = 1.0f / scalar;
-        return *this * invScalar; 
-    }
-#else
-    Vec2 operator+(const Vec2& other) const {
-        return {x + other.x, y + other.y};
-    }
-
-    Vec2 operator-(const Vec2& other) const {
-        return {x - other.x, y - other.y};
-    }
-
-    Vec2 operator*(float scalar) const {
-        return {x * scalar, y * scalar};
-    }
-    
-    Vec2 operator/(float scalar) const {
-        return {x / scalar, y / scalar};
-    }
-#endif
-
-    Vec2& operator+=(const Vec2& other) {
-        x += other.x;
-        y += other.y;
-        return *this;
-    }
-
-    Vec2& operator-=(const Vec2& other) {
-        x -= other.x;
-        y -= other.y;
-        return *this;
-    }
-
-    
-    static inline float fastInvSqrt(float number) {
-        union {
-            float f;
-            uint32_t i;
-        } conv;
-        
-        float x2 = number * 0.5f;
-        conv.f = number;
-        conv.i = 0x5f3759df - (conv.i >> 1);
-        conv.f = conv.f * (1.5f - (x2 * conv.f * conv.f));
-        return conv.f;
-    }
-
-    float magnitudeSq() const {
-        return x * x + y * y;
-    }
-
-    float magnitude() const {
-        float magSq = magnitudeSq();
-        return std::sqrt(magSq);
-    }
-
-    Vec2 norm() const {
-        float magSq = magnitudeSq();
-        if (magSq < 0.0001f) return Vec2();
-        
-        float invMag = fastInvSqrt(magSq);
-        return *this * invMag;
-    }
-
-    float dot(const Vec2& other) const {
-#ifdef __APPLE__
-        simd_float2 a = {x, y};
-        simd_float2 b = {other.x, other.y};
-        return simd_dot(a, b);
-#else
-        return x * other.x + y * other.y;
-#endif
-    }
+  float x, y;
+  Vec2(float x = 0, float y = 0) : x(x), y(y) {}
+  float magnitude() const { return std::sqrt(x * x + y * y); }
+  Vec2 operator-(const Vec2 &other) const { return {x - other.x, y - other.y}; }
+  Vec2 operator*(float s) const { return {x * s, y * s}; }
+  Vec2 operator+(const Vec2 &other) const { return {x + other.x, y + other.y}; }
 };
 
-class Particle {
+enum ParticleType {
+  TYPE_DEFAULT = 0,
+  TYPE_LIQUID,
+  TYPE_SAND,
+  TYPE_GAS,
+  TYPE_STONE
+};
+
+class ParticleSystem {
 public:
-    Vec2 position, velocity;
+  // Structure of Arrays (SoA) data layout
+  std::vector<float> posX;
+  std::vector<float> posY;
+  std::vector<float> velX;
+  std::vector<float> velY;
+  std::vector<float> accX; // For Verlet integration
+  std::vector<float> accY;
+
+  std::vector<uint8_t> colorR;
+  std::vector<uint8_t> colorG;
+  std::vector<uint8_t> colorB;
+  std::vector<uint8_t> colorA;
+
+  std::vector<float> radius;
+  std::vector<float> mass;
+  std::vector<float> invMass;
+  std::vector<int> type;
+
+  size_t count = 0;
+  size_t capacity = 0;
+
+  ParticleSystem(size_t initialCapacity = 10000);
+
+  void addParticle(float x, float y, float vx, float vy, float r, float m,
+                   int t, SDL_Color c);
+  void clear();
+  void reserve(size_t newCapacity);
+  size_t size() const { return count; }
+
+  // Helper to get a "view" of a particle (for legacy code compatibility if
+  // needed) Note: This is slow, use direct array access for performance
+  struct ParticleView {
+    Vec2 position;
+    Vec2 velocity;
     SDL_Color color;
-    float radius, mass, invMass, dipoleMoment, exclusionConstant, repulsionFactor;
+    float radius;
+    float mass;
     int type;
-    Particle(Vec2 pos, Vec2 vel, SDL_Color col, float r, float m, float dipole, float exclusion, float repulsion, int t)
-        : position(pos), velocity(vel), color(col), radius(r), mass(m), dipoleMoment(dipole), exclusionConstant(exclusion), repulsionFactor(repulsion), type(t)
-    {
-         invMass = (mass != 0.0f) ? 1.0f / mass : 0.0f;
-    }
-    void update(const Vec2& force, float deltaTime);
-    void render(SDL_Renderer* renderer);
+  };
+  ParticleView getParticle(size_t index) const;
+
+  // Render all particles
+  void render(SDL_Renderer *renderer);
+
 private:
-    static void drawCircle(SDL_Renderer* renderer, int centerX, int centerY, int radius);
+  // Texture cache for circles
+  SDL_Texture *getCircleTexture(SDL_Renderer *renderer, int radius);
 };
 
 #endif

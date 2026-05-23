@@ -1,83 +1,67 @@
 #ifndef PARTICLE_H
 #define PARTICLE_H
 
+#include "config.h"
+#include "vec2.h"
+
 #include <SDL2/SDL.h>
-#include <algorithm>
-#include <cmath>
-#include <string>
+#include <cstdint>
 #include <vector>
 
-#ifdef __APPLE__
-#include <simd/simd.h>
-#endif
+// ---------------------------------------------------------------------------
+// Structure-of-Arrays particle store. Splitting the data this way lets the
+// physics loops walk contiguous floats which is friendlier to the cache and
+// to auto-vectorisation than an array of fat structs would be.
+// ---------------------------------------------------------------------------
 
-// Simple Vec2 for non-critical paths
-struct Vec2 {
-  float x, y;
-  Vec2(float x = 0, float y = 0) : x(x), y(y) {}
-  float magnitude() const { return std::sqrt(x * x + y * y); }
-  Vec2 operator-(const Vec2 &other) const { return {x - other.x, y - other.y}; }
-  Vec2 operator*(float s) const { return {x * s, y * s}; }
-  Vec2 operator+(const Vec2 &other) const { return {x + other.x, y + other.y}; }
-};
-
-enum ParticleType {
+enum ParticleType : std::uint8_t {
   TYPE_DEFAULT = 0,
-  TYPE_LIQUID,
-  TYPE_SAND,
-  TYPE_GAS,
-  TYPE_STONE
+  TYPE_LIQUID  = 1,
+  TYPE_SAND    = 2,
+  TYPE_GAS     = 3,
+  TYPE_STONE   = 4,
+  TYPE_COUNT
 };
+
+const char *particleTypeName(ParticleType t);
+SDL_Color   particleTypeColor(ParticleType t);
 
 class ParticleSystem {
 public:
-  // Structure of Arrays (SoA) data layout
-  std::vector<float> posX;
-  std::vector<float> posY;
-  std::vector<float> velX;
-  std::vector<float> velY;
-  std::vector<float> accX; // For Verlet integration
-  std::vector<float> accY;
+  // Kinematics
+  std::vector<float> posX, posY;
+  std::vector<float> velX, velY;
+  std::vector<float> accX, accY;       // accumulator for the force phase
 
-  std::vector<uint8_t> colorR;
-  std::vector<uint8_t> colorG;
-  std::vector<uint8_t> colorB;
-  std::vector<uint8_t> colorA;
+  // Material
+  std::vector<float>         radius;
+  std::vector<float>         mass;
+  std::vector<float>         invMass;  // 0 for kinematic/stone particles
+  std::vector<std::uint8_t>  type;     // ParticleType
 
-  std::vector<float> radius;
-  std::vector<float> mass;
-  std::vector<float> invMass;
-  std::vector<int> type;
+  // Colour (packed as 4 separate channel arrays so the renderer can
+  // build vertex buffers quickly).
+  std::vector<std::uint8_t> colorR, colorG, colorB, colorA;
 
-  size_t count = 0;
-  size_t capacity = 0;
+  std::size_t count    = 0;
+  std::size_t capacity = 0;
 
-  ParticleSystem(size_t initialCapacity = 10000);
+  explicit ParticleSystem(std::size_t initialCapacity = cfg::INITIAL_CAPACITY);
 
-  void addParticle(float x, float y, float vx, float vy, float r, float m,
-                   int t, SDL_Color c);
+  void reserve(std::size_t newCapacity);
   void clear();
-  void reserve(size_t newCapacity);
-  size_t size() const { return count; }
+  std::size_t size() const { return count; }
 
-  // Helper to get a "view" of a particle (for legacy code compatibility if
-  // needed) Note: This is slow, use direct array access for performance
-  struct ParticleView {
-    Vec2 position;
-    Vec2 velocity;
-    SDL_Color color;
-    float radius;
-    float mass;
-    int type;
-  };
-  ParticleView getParticle(size_t index) const;
+  // Returns the index of the new particle, or count (== failure) if at cap.
+  std::size_t add(float x, float y, float vx, float vy,
+                  float r, float m, ParticleType t, SDL_Color c);
 
-  // Render all particles
-  void render(SDL_Renderer *renderer);
+  // Remove particle at index by swapping with the last; O(1).
+  void removeSwap(std::size_t index);
 
-private:
-  // Texture cache for circles
-  SDL_Texture *getCircleTexture(SDL_Renderer *renderer, int radius);
+  // Light read-only accessors so external code stays readable.
+  Vec2 position(std::size_t i) const { return {posX[i], posY[i]}; }
+  Vec2 velocity(std::size_t i) const { return {velX[i], velY[i]}; }
 };
 
 #endif

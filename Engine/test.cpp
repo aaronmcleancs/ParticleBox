@@ -1,82 +1,65 @@
 #include "test.h"
 
-#include <iostream>
-#include <vector>
-#include <chrono>
-#include <string>
-#include <cmath>
-
 #include "simulation.h"
 
-static float runSingleTest(int particleCount, int framesToSimulate,
-                           bool multiThread, bool pairwise, bool grid)
-{
-    Simulation sim;
-    sim.reset(particleCount);
-    
-    
-    if (sim.isMultithreadingEnabled() != multiThread) {
-        sim.toggleMultithreading();
-    }
-    if (sim.isReducedPairwiseComparisonsEnabled() != pairwise) {
-        sim.toggleReducedPairwiseComparisons();
-    }
-    if (sim.isGridEnabled() != grid) {
-        sim.toggleGrid();
-    }
+#include <chrono>
+#include <cstdio>
+#include <vector>
 
-    sim.start();
+namespace {
 
-    auto startTime = std::chrono::steady_clock::now();
-    for (int frame = 0; frame < framesToSimulate; ++frame) {
-        
-        sim.update(0.016f);
-    }
-    auto endTime = std::chrono::steady_clock::now();
-    double elapsedSec = std::chrono::duration<double>(endTime - startTime).count();
+struct Scenario {
+  int  particleCount;
+  int  frames;
+  bool multithread;
+  bool grid;
+  const char *label;
+};
 
-    float averageFPS = static_cast<float>(framesToSimulate / elapsedSec);
-    return averageFPS;
+// Run one scenario and return total wall-clock ms for all update() calls.
+double runScenario(const Scenario &s) {
+  Simulation sim;
+  sim.reset(s.particleCount);
+
+  // Configure runtime flags through the shared InputState. Toggling has to
+  // happen via the engine wrappers so the physics engine stays in sync.
+  if (sim.isMultithreadingEnabled() != s.multithread) sim.toggleMultithreading();
+  if (sim.isGridEnabled()           != s.grid)        sim.toggleGrid();
+
+  // Use a fixed frame dt so the benchmark is reproducible.
+  const float dt = 1.0f / 60.0f;
+
+  auto t0 = std::chrono::steady_clock::now();
+  for (int f = 0; f < s.frames; ++f) sim.update(dt);
+  auto t1 = std::chrono::steady_clock::now();
+
+  return std::chrono::duration<double, std::milli>(t1 - t0).count();
 }
 
-void runPerformanceTests()
-{
-    
-    std::vector<int> particleCounts = {100, 500, 1000, 2000, 5000, 10000};
-    int framesToSimulate = 300;
-    
-    std::vector<bool> boolValues = {false, true};
-    
-    std::cout << "=== Comprehensive Simulation Performance Tests ===\n";
-    std::cout << "We will test these particle counts: ";
-    for (int pc : particleCounts) {
-        std::cout << pc << " ";
-    }
-    std::cout << "\nFrames simulated per test: " << framesToSimulate << "\n\n";
-    
-    std::cout << "Particles"
-              << "\tMultiThr"
-              << "\tPairwise"
-              << "\tGrid"
-              << "\tAvgFPS\n";
-    std::cout << "-----------------------------------------------\n";
-    
-    for (int pc : particleCounts) {
-        for (bool mt : boolValues) {
-            for (bool pw : boolValues) {
-                for (bool gd : boolValues) {
-                    float fps = runSingleTest(pc, framesToSimulate, mt, pw, gd);
+} // namespace
 
-                    
-                    std::cout << pc << "\t"
-                              << (mt ? "ON" : "OFF") << "\t\t"
-                              << (pw ? "ON" : "OFF") << "\t\t"
-                              << (gd ? "ON" : "OFF") << "\t"
-                              << fps << "\n";
-                }
-            }
-        }
-    }
+void runPerformanceTests() {
+  std::printf("==== Particle Simulation Benchmark ====\n");
+  std::printf("Each scenario simulates a fixed number of frames headlessly\n");
+  std::printf("and reports total ms + average ms per frame.\n\n");
 
-    std::cout << "\nPerformance tests complete.\n";
+  const int frames = 240; // ~4 seconds of simulated time at 60 fps
+  std::vector<Scenario> scenarios = {
+      {  500, frames, false, true,  "  500 particles   ST + grid"},
+      {  500, frames, true,  true,  "  500 particles   MT + grid"},
+      { 2000, frames, false, true,  " 2000 particles   ST + grid"},
+      { 2000, frames, true,  true,  " 2000 particles   MT + grid"},
+      { 2000, frames, true,  false, " 2000 particles   MT no-grid"},
+      { 5000, frames, true,  true,  " 5000 particles   MT + grid"},
+      {10000, frames, true,  true,  "10000 particles   MT + grid"},
+  };
+
+  std::printf("%-32s %12s %12s\n", "Scenario", "total (ms)", "per-frame (ms)");
+  std::printf("---------------------------------------------------------------\n");
+  for (const auto &s : scenarios) {
+    double total = runScenario(s);
+    double per   = total / static_cast<double>(s.frames);
+    std::printf("%-32s %12.2f %12.3f\n", s.label, total, per);
+  }
+  std::printf("\nDone.\n");
 }

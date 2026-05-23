@@ -1,10 +1,13 @@
 #ifndef SIMULATION_H
 #define SIMULATION_H
 
+#include "input_state.h"
 #include "particle.h"
 #include "physics.h"
+#include "vec2.h"
+
 #include <chrono>
-#include <vector>
+#include <random>
 
 class Simulation {
 public:
@@ -12,55 +15,67 @@ public:
 
   void start();
   void stop();
+  bool isRunning() const { return running_; }
+
+  // Refill the world with this many randomised particles.
   void reset(int particleCount);
-  void update(double deltaTime);
-  void render(SDL_Renderer *renderer);
 
-  // Interaction
-  void spawnParticlesAtMouse(int x, int y, int count);
-  void updateMousePosition(int x, int y);
-  void disableMouseRepulsion();
+  // Clear every particle without resetting any other state.
+  void clearParticles();
 
-  // Toggles
+  // Set the velocity of all particles to zero.
+  void freezeAll();
+
+  void update(float frameDt);
+  void render(struct SDL_Renderer *renderer);
+
+  // Spawn a few particles centred on (x, y) with a brush-style scatter.
+  void spawnBrush(int x, int y, int count, float brushRadius, ParticleType t);
+
+  // Erase any particles inside the brush at (x, y).
+  void eraseBrush(int x, int y, float brushRadius);
+
+  // Single-particle convenience used for menus.
+  void spawnAt(float x, float y, ParticleType t);
+
+  // Trigger an explosion at (x, y) on the next physics step.
+  void triggerExplosion(float x, float y);
+
+  // Toggles forwarded to the physics engine.
   void toggleGravity();
-  void toggleMultithreading(); // Kept for interface compatibility, though
-                               // physics engine handles threading now
+  void toggleMultithreading();
   void toggleGrid();
-  void toggleReducedPairwiseComparisons(); // Kept for interface compatibility
 
-  // Getters
-  float getFrameRate() const;
-  int getParticleCount() const;
-  Vec2 getAverageVelocity() const;
+  // Read-only access to shared input state (the input manager mutates this).
+  InputState       &input()       { return input_; }
+  const InputState &input() const { return input_; }
 
-  // Setters
-  void setParticle(int count);
+  // Diagnostics
+  float getFrameRate() const     { return frameRate_; }
+  float getAvgUpdateMs() const   { return avgUpdateMs_; }
+  int   getParticleCount() const { return static_cast<int>(particles_.count); }
+  Vec2  getAverageVelocity() const;
 
-  // State
-  bool isMultithreadingEnabled() const { return multithreadingEnabled; }
-  bool isGridEnabled() const { return gridEnabled; }
-  bool isReducedPairwiseComparisonsEnabled() const {
-    return reducedPairwiseComparisonsEnabled;
-  }
+  bool isMultithreadingEnabled() const { return input_.multithreadEnabled; }
+  bool isGridEnabled() const           { return input_.gridEnabled; }
+
+  // Direct (read-only) access for the renderer.
+  const ParticleSystem &particles() const { return particles_; }
 
 private:
-  bool running;
-  bool multithreadingEnabled;
-  bool gridEnabled;
-  bool reducedPairwiseComparisonsEnabled;
-
-  PhysicsEngine physics;
-  ParticleSystem particles;
-
-  // Time keeping
-  std::chrono::steady_clock::time_point lastFrameTime;
-  int frameCount;
-  float frameRate;
-  void calculateFrameRate();
-
-  // Helpers
   void createRandomParticle();
-  void createParticleAtPosition(int x, int y);
+
+  ParticleSystem particles_;
+  PhysicsEngine  physics_;
+  InputState     input_;
+
+  bool  running_ = true;
+  float frameRate_   = 0.0f;
+  float avgUpdateMs_ = 0.0f;
+  int   frameCount_  = 0;
+  std::chrono::steady_clock::time_point fpsStart_;
+
+  std::mt19937 rng_;
 };
 
 #endif

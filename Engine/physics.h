@@ -1,64 +1,57 @@
 #ifndef PHYSICS_H
 #define PHYSICS_H
 
+#include "input_state.h"
 #include "particle.h"
 #include "spatial_hash.h"
+#include "thread_pool.h"
+
+#include <cstdint>
 #include <memory>
 #include <vector>
 
-#ifdef _OPENMP
-#include <omp.h>
-#endif
+// ---------------------------------------------------------------------------
+// Orchestrates one physics frame:
+//
+//   for substep in 0..N:
+//       1. accumulate field accelerations into accX/accY                (parallel)
+//       2. integrate velocity from acc, damp, optional explosion impulse (parallel)
+//       3. integrate position from velocity                              (parallel)
+//       4. rebuild spatial hash                                          (serial)
+//       5. collision detection -> per-particle position correction       (parallel)
+//       6. apply correction + world bounds                               (parallel)
+//
+// Every step that writes per-particle state only writes the index it owns,
+// so the parallel passes are race-free. The collision step uses accX/accY
+// as a scratch buffer for position corrections (the field acceleration is
+// no longer needed by the time we reach the collision phase).
+// ---------------------------------------------------------------------------
 
 class PhysicsEngine {
-  bool gravityEnabled = true;
-  bool gridEnabled = true; // Now controls SpatialHash usage
-  bool multithreadingEnabled = true;
-  bool reducedPairwiseEnabled =
-      true; // If true, use Spatial Hash. If false, use Brute Force (if grid is
-            // also off? or just independent?) Actually, let's make gridEnabled
-            // control SpatialHash build, and this flag control whether we use
-            // it? Simpler: GridEnabled = Spatial Hash. ReducedPairwise =
-            // Optimization within cell? Let's just add the flags for now.
-
-  // Constants
-  static constexpr float REPULSION_STRENGTH = 1.5f;
-  static constexpr float MOUSE_REPULSION_STRENGTH = 100.0f;
-  static constexpr float MOUSE_REPULSION_RADIUS = 100.0f;
-
-  Vec2 mousePosition{0.0f, 0.0f};
-  bool mouseRepulsionEnabled = false;
-
-  // Spatial Hash
-  std::unique_ptr<SpatialHash> spatialHash;
-  std::vector<uint32_t> sortedIndices; // For spatial hash
-
 public:
-  float gravity = 9.81f;
-
   PhysicsEngine();
 
-  void toggleGravity() { gravityEnabled = !gravityEnabled; }
-  void setGridEnabled(bool enabled) { gridEnabled = enabled; }
-  void setMultithreadingEnabled(bool enabled) {
-    multithreadingEnabled = enabled;
-  }
-  void setReducedPairwiseEnabled(bool enabled) {
-    reducedPairwiseEnabled = enabled;
-  }
+  void update(ParticleSystem &particles, const InputState &input,
+              float frameDt);
 
-  void setMousePosition(float x, float y) {
-    mousePosition.x = x;
-    mousePosition.y = y;
-    mouseRepulsionEnabled = true;
-  }
-  void disableMouseRepulsion() { mouseRepulsionEnabled = false; }
+  void setMultithreadingEnabled(bool b) { multithreading_ = b; }
+  void setGridEnabled(bool b)           { gridEnabled_ = b; }
 
-  // Main update function
-  void update(ParticleSystem &particles, float deltaTime);
+  // Lets the caller clear the one-shot explode flag after consumption.
+  bool consumedExplosionFlag() const { return consumedExplosion_; }
 
-  // Helper for boundary conditions
-  void applyBoundaries(ParticleSystem &particles, size_t index);
+private:
+  bool multithreading_ = true;
+  bool gridEnabled_    = true;
+  bool consumedExplosion_ = false;
+
+  ThreadPool                pool_;
+  std::unique_ptr<SpatialHash> hash_;
+  std::vector<std::uint32_t>   sortedIndices_;
+
+  std::size_t chunkSize(std::size_t total) const;
+  void runParallel(std::size_t total,
+                   const ThreadPool::RangeFn &fn);
 };
 
 #endif
